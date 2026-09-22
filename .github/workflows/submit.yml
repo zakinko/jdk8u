@@ -316,7 +316,17 @@ jobs:
           # initialisation here; the image is fresh, so mark it.
           find jdk8/j2sdk-image -type f \( -perm -u+x -o -name '*.so' \) -print |
             while read f; do /usr/sbin/paxctl +m "$f" >/dev/null 2>&1 || :; done
-          jdk8/j2sdk-image/bin/java -version
+          # java -version prints its three lines and then aborts while the
+          # VM shuts down, which takes every jtreg run with it.  Dump a
+          # backtrace from the core so the abort has a name.
+          jdk8/j2sdk-image/bin/java -version || (
+            ulimit -c unlimited
+            cd /var/tmp && rm -f java.core
+            "${GITHUB_WORKSPACE}/jdk8/j2sdk-image/bin/java" -version
+            ls -l /var/tmp/java.core
+            gdb -batch -ex 'bt' -ex 'info threads' \
+                "${GITHUB_WORKSPACE}/jdk8/j2sdk-image/bin/java" /var/tmp/java.core
+          ) || :
           mkdir -p test-results
           cd test
           PRODUCT_HOME="${GITHUB_WORKSPACE}/jdk8/j2sdk-image" \
