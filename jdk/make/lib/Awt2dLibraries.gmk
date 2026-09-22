@@ -1287,7 +1287,13 @@ ifndef BUILD_HEADLESS_ONLY
         -framework Cocoa \
         -framework JavaNativeFoundation
   else ifeq ($(OPENJDK_TARGET_OS), bsd)
-    LIBSPLASHSCREEN_LDFLAGS_SUFFIX += $(X_LIBS) -lX11 -lXext $(LIBM) -L$(PACKAGE_PATH)/lib -liconv -pthread
+    # NetBSD has iconv(3) in its C library; the other BSDs take it from a
+    # package under $(PACKAGE_PATH).
+    ifeq ($(OPENJDK_TARGET_OS_VENDOR), netbsd)
+      LIBSPLASHSCREEN_LDFLAGS_SUFFIX += $(X_LIBS) -lX11 -lXext $(LIBM) -pthread
+    else
+      LIBSPLASHSCREEN_LDFLAGS_SUFFIX += $(X_LIBS) -lX11 -lXext $(LIBM) -L$(PACKAGE_PATH)/lib -liconv -pthread
+    endif
   else ifeq ($(OPENJDK_TARGET_OS), windows)
     LIBSPLASHSCREEN_LDFLAGS_SUFFIX += kernel32.lib user32.lib gdi32.lib delayimp.lib -DELAYLOAD:user32.dll
   else	# .. all other Unixes can use X_LIBS

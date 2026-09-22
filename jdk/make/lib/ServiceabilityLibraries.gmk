@@ -247,7 +247,7 @@ ifeq ($(OPENJDK_TARGET_OS), windows)
 endif
 
 ifeq ($(OPENJDK_TARGET_OS), bsd)
-  LIBINSTRUMENT_LDFLAGS_SUFFIX += -L$(PACKAGE_PATH)/lib -liconv $(LIBZ)
+  LIBINSTRUMENT_LDFLAGS_SUFFIX += $(BSD_ICONV_LIBS) $(LIBZ)
   ifeq ($(BSD_STATIC_LIBJLI), bsd)
     LIBINSTRUMENT_LDFLAGS += -Xlinker --whole-archive $(JDK_OUTPUTDIR)/objs/libjli_static.a \
         -Xlinker --no-whole-archive
@@ -255,9 +255,15 @@ ifeq ($(OPENJDK_TARGET_OS), bsd)
     LIBINSTRUMENT_LDFLAGS += $(call SET_SHARED_LIBRARY_ORIGIN,/jli)
     LIBINSTRUMENT_LDFLAGS_SUFFIX += -L$(INSTALL_LIBRARIES_HERE)/jli -ljli
   endif
-  BSD_ICONV_CFLAGS:= -I$(PACKAGE_PATH)/include
-  ifneq ($(OPENJDK_TARGET_OS_VENDOR), openbsd)
-    BSD_ICONV_CFLAGS += -DLIBICONV_PLUG
+  # NetBSD has iconv(3) in its C library; FreeBSD, DragonFly and OpenBSD take
+  # it from a package under $(PACKAGE_PATH), and on the first two that package
+  # wants LIBICONV_PLUG so its header does not rename the symbols.
+  ifneq ($(OPENJDK_TARGET_OS_VENDOR), netbsd)
+    BSD_ICONV_CFLAGS := -I$(PACKAGE_PATH)/include
+    BSD_ICONV_LIBS := -L$(PACKAGE_PATH)/lib -liconv
+    ifneq ($(OPENJDK_TARGET_OS_VENDOR), openbsd)
+      BSD_ICONV_CFLAGS += -DLIBICONV_PLUG
+    endif
   endif
 endif
 

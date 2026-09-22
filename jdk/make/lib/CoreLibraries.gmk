@@ -547,10 +547,16 @@ endif
 
 ##########################################################################################
 
+# NetBSD has iconv(3) in its C library; FreeBSD, DragonFly and OpenBSD take
+# it from a package under $(PACKAGE_PATH), and on the first two that package
+# wants LIBICONV_PLUG so its header does not rename the symbols.
 ifeq ($(OPENJDK_TARGET_OS), bsd)
-  BSD_ICONV_CFLAGS:= -I$(PACKAGE_PATH)/include
-  ifneq ($(OPENJDK_TARGET_OS_VENDOR), openbsd)
-    BSD_ICONV_CFLAGS += -DLIBICONV_PLUG
+  ifneq ($(OPENJDK_TARGET_OS_VENDOR), netbsd)
+    BSD_ICONV_CFLAGS := -I$(PACKAGE_PATH)/include
+    BSD_ICONV_LIBS := -L$(PACKAGE_PATH)/lib -liconv
+    ifneq ($(OPENJDK_TARGET_OS_VENDOR), openbsd)
+      BSD_ICONV_CFLAGS += -DLIBICONV_PLUG
+    endif
   endif
 endif
 
@@ -567,7 +573,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBNPT, \
     MAPFILE := $(JDK_TOPDIR)/make/mapfiles/libnpt/mapfile-vers, \
     LDFLAGS := $(LDFLAGS_JDKLIB) \
         $(call SET_SHARED_LIBRARY_ORIGIN), \
-    LDFLAGS_bsd := -L$(PACKAGE_PATH)/lib -liconv, \
+    LDFLAGS_bsd := $(BSD_ICONV_LIBS), \
     LDFLAGS_macosx := -liconv, \
     LDFLAGS_SUFFIX_windows := -export:nptInitialize -export:nptTerminate, \
     LDFLAGS_SUFFIX_solaris := -lc, \
