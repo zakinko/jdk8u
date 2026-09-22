@@ -189,6 +189,7 @@ jobs:
           chmod +x jtreg/bin/jtreg
           cd jdk
           bash configure \
+            --disable-option-checking \
             --with-conf-name=netbsd-x64 \
             ${{ matrix.flags }} \
             --with-user-release-suffix=${GITHUB_ACTOR}-${GITHUB_SHA} \
