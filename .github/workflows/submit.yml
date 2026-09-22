@@ -1862,6 +1862,11 @@ jobs:
       - windows_x64_test
       - windows_x86_test
       - macos_x64_test
+      # Without these two the clean-up below runs as soon as the other jobs
+      # are skipped, and deletes the jtreg artifact while the NetBSD build
+      # is still queued for it.
+      - netbsd_x64_build
+      - netbsd_x64_test
 
     steps:
       - name: Display current artifacts
