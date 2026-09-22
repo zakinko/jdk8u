@@ -756,7 +756,11 @@ static void *java_start(Thread *thread) {
   // processors with hyperthreading technology.
   static int counter = 0;
   int pid = os::current_process_id();
-  alloca(((pid ^ counter++) & 7) * 128);
+  // The result is deliberately unused -- the call is here for the stack
+  // offset it leaves behind -- but NetBSD declares alloca with
+  // warn_unused_result, and the VM builds with -Werror.
+  void* unused_stack_pad = alloca(((pid ^ counter++) & 7) * 128);
+  (void)unused_stack_pad;
 
   ThreadLocalStorage::set_thread(thread);
 
@@ -4067,7 +4071,9 @@ void os::set_native_thread_name(const char *name) {
 #elif defined(__FreeBSD__) || defined(__OpenBSD__)
     pthread_set_name_np(pthread_self(), name);
 #elif defined(__NetBSD__)
-    pthread_setname_np(pthread_self(), "%s", name);
+    // NetBSD's third argument is the void* the format consumes, so the
+    // name has to lose its const to be passed as one.
+    pthread_setname_np(pthread_self(), "%s", (void*)name);
 #endif
   }
 }
