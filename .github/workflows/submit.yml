@@ -29,6 +29,7 @@ jobs:
       platform_windows_x64: ${{ steps.check_platforms.outputs.platform_windows_x64 }}
       platform_windows_x86: ${{ steps.check_platforms.outputs.platform_windows_x86 }}
       platform_macos_x64: ${{ steps.check_platforms.outputs.platform_macos_x64 }}
+      platform_netbsd_x64: ${{ steps.check_platforms.outputs.platform_netbsd_x64 }}
       dependencies: ${{ steps.check_deps.outputs.dependencies }}
 
     steps:
@@ -45,6 +46,7 @@ jobs:
           echo "platform_windows_x64=${{ contains(github.event.inputs.platforms, 'windows x64') || (github.event.inputs.platforms == '' && (secrets.JDK_SUBMIT_PLATFORMS == '' || contains(secrets.JDK_SUBMIT_PLATFORMS, 'windows x64'))) }}" >> $GITHUB_OUTPUT
           echo "platform_windows_x86=${{ contains(github.event.inputs.platforms, 'windows x86') || (github.event.inputs.platforms == '' && (secrets.JDK_SUBMIT_PLATFORMS == '' || contains(secrets.JDK_SUBMIT_PLATFORMS, 'windows x86'))) }}" >> $GITHUB_OUTPUT
           echo "platform_macos_x64=${{ contains(github.event.inputs.platforms, 'macos x64') || (github.event.inputs.platforms == '' && (secrets.JDK_SUBMIT_PLATFORMS == '' || contains(secrets.JDK_SUBMIT_PLATFORMS, 'macos x64'))) }}" >> $GITHUB_OUTPUT
+          echo "platform_netbsd_x64=${{ contains(github.event.inputs.platforms, 'netbsd x64') || (github.event.inputs.platforms == '' && (secrets.JDK_SUBMIT_PLATFORMS == '' || contains(secrets.JDK_SUBMIT_PLATFORMS, 'netbsd x64'))) }}" >> $GITHUB_OUTPUT
         if: steps.check_submit.outputs.should_run != 'false'
 
       - name: Determine unique bundle identifier
@@ -112,6 +114,242 @@ jobs:
           name: transient_jtreg_${{ steps.check_bundle_id.outputs.bundle_id }}
           path: ~/jtreg/
         if: steps.check_submit.outputs.should_run != 'false'
+
+  netbsd_x64_build:
+    name: NetBSD x64
+    runs-on: "ubuntu-24.04"
+    needs: prerequisites
+    if: needs.prerequisites.outputs.should_run != 'false' && needs.prerequisites.outputs.platform_netbsd_x64 != 'false'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor:
+          - build release
+          - build debug
+        include:
+          - flavor: build debug
+            flags: --enable-debug
+            artifact: -debug
+
+    env:
+      JDK_VERSION: "${{ fromJson(needs.prerequisites.outputs.dependencies).JDK_MAJOR_VERSION }}.${{ fromJson(needs.prerequisites.outputs.dependencies).JDK_MINOR_VERSION }}.${{ fromJson(needs.prerequisites.outputs.dependencies).JDK_MICRO_VERSION }}"
+
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@v4
+        with:
+          path: jdk
+
+      - name: Restore jtreg artifact
+        id: jtreg_restore
+        uses: actions/download-artifact@v4
+        with:
+          name: transient_jtreg_${{ needs.prerequisites.outputs.bundle_id }}
+          path: jtreg/
+        continue-on-error: true
+
+      - name: Restore jtreg artifact (retry)
+        uses: actions/download-artifact@v4
+        with:
+          name: transient_jtreg_${{ needs.prerequisites.outputs.bundle_id }}
+          path: jtreg/
+        if: steps.jtreg_restore.outcome == 'failure'
+
+      # The build runs natively inside a NetBSD virtual machine, as the
+      # FreeBSD and OpenBSD jobs do in the newer branches; nothing here
+      # measured the port on NetBSD before.  The compiler is the base gcc.
+      - name: Start NetBSD VM
+        uses: vmactions/netbsd-vm@v1
+        with:
+          release: "10.1"
+          mem: 12288
+          cpu: 4
+          usesh: true
+          copyback: false
+          prepare: |
+            mount -t procfs procfs /proc
+            # The image carries no X11 sets; the build wants the headers.
+            REL=`uname -r | cut -d_ -f1`
+            ARCH=`uname -m`
+            for set in xbase xcomp; do
+              ftp -o /var/tmp/$set.tar.xz "https://cdn.NetBSD.org/pub/NetBSD/NetBSD-$REL/$ARCH/binary/sets/$set.tar.xz"
+              tar -xJpf /var/tmp/$set.tar.xz -C /
+              rm -f /var/tmp/$set.tar.xz
+            done
+            # pkgsrc's lang/openjdk8 is the boot JDK; the image's pkg_add
+            # already points at NetBSD's binary repository.
+            /usr/sbin/pkg_add openjdk8 bash gmake zip unzip cups freetype2 fontconfig alsa-lib pkgconf gtar
+            echo 'cd $GITHUB_WORKSPACE' >> ~/.vmenv
+
+      - name: Configure and build in VM
+        shell: netbsd {0}
+        run: |
+          . ~/.vmenv
+          chmod +x jtreg/bin/jtreg
+          cd jdk
+          bash configure \
+            --with-conf-name=netbsd-x64 \
+            ${{ matrix.flags }} \
+            --with-user-release-suffix=${GITHUB_ACTOR}-${GITHUB_SHA} \
+            --with-build-number=b00 \
+            --with-boot-jdk=/usr/pkg/java/openjdk8 \
+            --with-jtreg=${GITHUB_WORKSPACE}/jtreg \
+            --with-zlib=system \
+            --with-giflib=bundled \
+            --with-cups-include=/usr/pkg/include \
+            --with-freetype-lib=/usr/pkg/lib \
+            --with-freetype-include=/usr/pkg/include \
+            --disable-freetype-bundling \
+            --disable-precompiled-headers \
+            --disable-ccache \
+            --with-toolchain-type=gcc \
+            --with-jobs=4 --with-num-cores=4 --with-memory-size=8192 \
+            || ( echo "Dumping config.log:" && cat config.log && exit 1 )
+          gmake CONF_NAME=netbsd-x64 LOG_LEVEL=info images
+          cd ..
+          tar -czf jdk-${{ env.JDK_VERSION }}-internal+0_netbsd-x64_bin${{ matrix.artifact }}.tar.gz -C jdk/build/netbsd-x64/images j2sdk-image
+
+      - name: Copy the bundle back
+        run: rsync -av -e ssh netbsd:${{ github.workspace }}/jdk-${{ env.JDK_VERSION }}-internal+0_netbsd-x64_bin${{ matrix.artifact }}.tar.gz .
+
+      - name: Persist test bundles
+        uses: actions/upload-artifact@v4
+        with:
+          name: transient_jdk-netbsd-x64${{ matrix.artifact }}_${{ needs.prerequisites.outputs.bundle_id }}
+          path: |
+            jdk-${{ env.JDK_VERSION }}-internal+0_netbsd-x64_bin${{ matrix.artifact }}.tar.gz
+
+  netbsd_x64_test:
+    name: NetBSD x64
+    runs-on: "ubuntu-24.04"
+    needs:
+      - prerequisites
+      - netbsd_x64_build
+
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - jdk/tier1
+          - langtools/tier1
+          - hotspot/tier1
+        include:
+          - test: jdk/tier1
+            suites: jdk_tier1
+          - test: langtools/tier1
+            suites: langtools_tier1
+          - test: hotspot/tier1
+            suites: hotspot_tier1
+
+    env:
+      JDK_VERSION: "${{ fromJson(needs.prerequisites.outputs.dependencies).JDK_MAJOR_VERSION }}.${{ fromJson(needs.prerequisites.outputs.dependencies).JDK_MINOR_VERSION }}.${{ fromJson(needs.prerequisites.outputs.dependencies).JDK_MICRO_VERSION }}"
+
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@v4
+
+      - name: Restore jtreg artifact
+        id: jtreg_restore
+        uses: actions/download-artifact@v4
+        with:
+          name: transient_jtreg_${{ needs.prerequisites.outputs.bundle_id }}
+          path: jtreg/
+        continue-on-error: true
+
+      - name: Restore jtreg artifact (retry)
+        uses: actions/download-artifact@v4
+        with:
+          name: transient_jtreg_${{ needs.prerequisites.outputs.bundle_id }}
+          path: jtreg/
+        if: steps.jtreg_restore.outcome == 'failure'
+
+      - name: Restore build artifacts
+        id: build_restore
+        uses: actions/download-artifact@v4
+        with:
+          name: transient_jdk-netbsd-x64_${{ needs.prerequisites.outputs.bundle_id }}
+          path: bundle/
+        continue-on-error: true
+
+      - name: Restore build artifacts (retry)
+        uses: actions/download-artifact@v4
+        with:
+          name: transient_jdk-netbsd-x64_${{ needs.prerequisites.outputs.bundle_id }}
+          path: bundle/
+        if: steps.build_restore.outcome == 'failure'
+
+      - name: Start NetBSD VM
+        uses: vmactions/netbsd-vm@v1
+        with:
+          release: "10.1"
+          mem: 8192
+          cpu: 4
+          usesh: true
+          copyback: false
+          prepare: |
+            mount -t procfs procfs /proc
+            # The image carries no X11 sets; the build wants the headers.
+            REL=`uname -r | cut -d_ -f1`
+            ARCH=`uname -m`
+            for set in xbase xcomp; do
+              ftp -o /var/tmp/$set.tar.xz "https://cdn.NetBSD.org/pub/NetBSD/NetBSD-$REL/$ARCH/binary/sets/$set.tar.xz"
+              tar -xJpf /var/tmp/$set.tar.xz -C /
+              rm -f /var/tmp/$set.tar.xz
+            done
+            # pkgsrc's lang/openjdk8 is the boot JDK; the image's pkg_add
+            # already points at NetBSD's binary repository.
+            /usr/sbin/pkg_add openjdk8 bash gmake zip unzip cups freetype2 fontconfig alsa-lib pkgconf gtar
+            echo 'cd $GITHUB_WORKSPACE' >> ~/.vmenv
+
+      - name: Run tests in VM
+        shell: netbsd {0}
+        run: |
+          . ~/.vmenv
+          chmod +x jtreg/bin/jtreg
+          mkdir -p jdk8 && tar -xzf bundle/jdk-${{ env.JDK_VERSION }}-internal+0_netbsd-x64_bin.tar.gz -C jdk8
+          # Cross-built or not, a JDK without the PaX mark dies in VM
+          # initialisation here; the image is fresh, so mark it.
+          find jdk8/j2sdk-image -type f \( -perm -u+x -o -name '*.so' \) -print |
+            while read f; do /usr/sbin/paxctl +m "$f" >/dev/null 2>&1 || :; done
+          jdk8/j2sdk-image/bin/java -version
+          mkdir -p test-results
+          cd test
+          PRODUCT_HOME="${GITHUB_WORKSPACE}/jdk8/j2sdk-image" \
+          JT_HOME="${GITHUB_WORKSPACE}/jtreg" \
+          ALT_OUTPUTDIR="${GITHUB_WORKSPACE}/test-results" \
+          JTREG_TIMEOUT_FACTOR="4" \
+          gmake "${{ matrix.suites }}"
+
+      - name: Copy the results back
+        run: rsync -a -e ssh netbsd:${{ github.workspace }}/test-results/ test-results/
+        if: always()
+
+      - name: Check that all tests executed successfully
+        if: always()
+        run: >
+          if ! ls test-results/testoutput/*/Stats.txt >/dev/null 2>&1
+          || cat test-results/testoutput/*/exitcode.txt | grep -q -v '^0$'
+          || ! cat test-results/testoutput/*/Stats.txt | grep -q 'fail=0' ; then
+            cat test-results/testoutput/*/JTreport/text/{newfailures,other_errors}.txt 2>/dev/null ;
+            exit 1 ;
+          fi
+
+      - name: Package test results
+        if: always()
+        working-directory: test-results
+        run: >
+          zip -r9
+          "${HOME}/netbsd-x64_testresults_${{ matrix.suites }}_${{ needs.prerequisites.outputs.bundle_id }}.zip"
+          . || true
+
+      - name: Persist test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          path: ~/netbsd-x64_testresults_${{ matrix.suites }}_${{ needs.prerequisites.outputs.bundle_id }}.zip
+          name: netbsd-x64_testresults_${{ matrix.suites }}_${{ needs.prerequisites.outputs.bundle_id }}
+          continue-on-error: true
 
   linux_x64_build:
     name: Linux x64
