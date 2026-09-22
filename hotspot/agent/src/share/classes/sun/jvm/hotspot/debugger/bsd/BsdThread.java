@@ -46,6 +46,10 @@ class BsdThread implements ThreadProxy {
         this.debugger = debugger;
         // use unique_thread_id to identify thread
         this.unique_thread_id = id;
+        if (!isDarwin()) {
+            // On the other BSDs the one id there is, is the lwp id.
+            this.thread_id = (int) id;
+        }
     }
 
     public boolean equals(Object obj) {
@@ -53,11 +57,25 @@ class BsdThread implements ThreadProxy {
             return false;
         }
 
-        return (((BsdThread) obj).unique_thread_id == unique_thread_id);
+        // Compare the field hashCode() hashes.  This used to compare
+        // unique_thread_id while hashCode() returned thread_id, so two proxies
+        // for one thread could be equal and still land in different hash
+        // buckets -- every HashMap lookup keyed by a thread missed, and pstack
+        // printed no thread names and no Java frames.  On the BSDs other than
+        // macOS the VM does not set _unique_thread_id (NetBSD and OpenBSD
+        // leave it 0), so there every thread compared equal as well; thread_id
+        // is the lwp id and identifies the thread on those systems.  macOS
+        // keys threads by the mach id in unique_thread_id.
+        return isDarwin() ? (((BsdThread) obj).unique_thread_id == unique_thread_id)
+                          : (((BsdThread) obj).thread_id == thread_id);
     }
 
     public int hashCode() {
-        return thread_id;
+        return isDarwin() ? Long.hashCode(unique_thread_id) : thread_id;
+    }
+
+    private static boolean isDarwin() {
+        return sun.jvm.hotspot.utilities.PlatformInfo.getOS().equals("darwin");
     }
 
     public String toString() {
@@ -65,7 +83,9 @@ class BsdThread implements ThreadProxy {
     }
 
     public ThreadContext getContext() throws IllegalThreadStateException {
-        long[] data = debugger.getThreadIntegerRegisterSet(unique_thread_id);
+        // The id the native side wants is the one that identifies the thread
+        // on this system: the mach id on macOS, the lwp id elsewhere.
+        long[] data = debugger.getThreadIntegerRegisterSet(isDarwin() ? unique_thread_id : thread_id);
         ThreadContext context = BsdThreadContextFactory.createThreadContext(debugger);
         for (int i = 0; i < data.length; i++) {
             context.setRegister(i, data[i]);
