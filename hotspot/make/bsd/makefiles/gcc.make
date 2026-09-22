@@ -201,6 +201,14 @@ endif
 CFLAGS += $(VM_PICFLAG)
 CFLAGS += -fno-rtti
 CFLAGS += -fno-exceptions
+
+# NetBSD's <stdint.h> hands out the C99 limit and constant macros to C++ only
+# when these are set, and it is reached through more headers than the one
+# place that defines them, so say it once for the whole VM.  glibc defines
+# them for C++ whatever is asked of it, which is why nothing noticed.
+ifeq ($(OS_VENDOR), NetBSD)
+  CFLAGS += -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS
+endif
 ifeq ($(USE_CLANG),)
   CFLAGS += -pthread
   CFLAGS += -fcheck-new

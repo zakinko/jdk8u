@@ -25,16 +25,25 @@
 #ifndef SHARE_VM_UTILITIES_GLOBALDEFINITIONS_GCC_HPP
 #define SHARE_VM_UTILITIES_GLOBALDEFINITIONS_GCC_HPP
 
+// glibc defines the C99 limit and constant macros for C++ whatever is asked
+// of it; NetBSD's <stdint.h> hands them out only when these are set, and it
+// is reached through jni.h below, so they have to be set before anything is
+// included.  Without them SIZE_MAX, UINTPTR_MAX and INT64_C are undeclared
+// in the middle of shared code.
+#if defined(LINUX) || defined(_ALLBSD_SOURCE)
+#ifndef __STDC_LIMIT_MACROS
+#define __STDC_LIMIT_MACROS
+#endif // __STDC_LIMIT_MACROS
+#ifndef __STDC_CONSTANT_MACROS
+#define __STDC_CONSTANT_MACROS
+#endif // __STDC_CONSTANT_MACROS
+#endif
+
 #include "prims/jni.h"
 
 // This file holds compiler-dependent includes,
 // globally used constants & types, class (forward)
 // declarations and a few frequently used utility functions.
-#if defined(LINUX) || defined(_ALLBSD_SOURCE)
-#ifndef __STDC_LIMIT_MACROS
-#define __STDC_LIMIT_MACROS
-#endif // __STDC_LIMIT_MACROS
-#endif
 
 #include <ctype.h>
 #include <string.h>
