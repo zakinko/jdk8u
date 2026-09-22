@@ -202,6 +202,9 @@ jobs:
             --with-freetype-lib=/usr/pkg/lib \
             --with-freetype-include=/usr/pkg/include \
             --disable-freetype-bundling \
+            --with-fontconfig=/usr/pkg \
+            --x-includes=/usr/X11R7/include \
+            --x-libraries=/usr/X11R7/lib \
             --disable-precompiled-headers \
             --disable-ccache \
             --with-toolchain-type=gcc \
