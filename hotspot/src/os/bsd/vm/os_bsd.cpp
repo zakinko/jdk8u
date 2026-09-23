@@ -2195,7 +2195,17 @@ bool Semaphore::timedwait(unsigned int sec, int nsec) {
 #endif // __APPLE__
 
 static os_semaphore_t sig_sem;
-static Semaphore sr_semaphore;
+// Never destroyed.  At process exit __cxa_finalize runs this file's static
+// destructors, and ~Semaphore reaches sem_destroy in libpthread, which
+// faults there; the VM's own signal handler then catches that SIGSEGV and
+// tries to print a report with a vtable that is already gone, so the
+// process dies with "pure virtual method called" instead of exiting.
+// Nothing needs releasing at exit, so place it and leave it.
+static union {
+  char storage[sizeof(Semaphore)];
+  jlong align;
+} sr_semaphore_storage;
+static Semaphore& sr_semaphore = *::new (&sr_semaphore_storage) Semaphore();
 
 void os::signal_init_pd() {
   // Initialize signal structures
