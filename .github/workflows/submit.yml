@@ -328,6 +328,17 @@ jobs:
             gdb -batch -ex 'thread apply all bt' \
                 "${GITHUB_WORKSPACE}/jdk8/j2sdk-image/bin/java" /var/tmp/java.core
           ) || :
+          # Same 8u sources, no os_bsd.cpp patch: if pkgsrc's build exits
+          # cleanly here and ours does not, the abort is this tree's, and if
+          # both abort it belongs to the image.  Whichever way it falls, it
+          # is measured on the one machine rather than across two.
+          if pkgin -y install openjdk8 >/dev/null 2>&1 ||
+             pkg_add openjdk8 >/dev/null 2>&1; then
+            /usr/pkg/java/openjdk8/bin/java -version
+            echo "pkgsrc openjdk8 exit: $?"
+          else
+            echo "pkgsrc openjdk8: could not install, not measured"
+          fi
           mkdir -p test-results
           cd test
           PRODUCT_HOME="${GITHUB_WORKSPACE}/jdk8/j2sdk-image" \
