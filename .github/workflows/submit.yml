@@ -332,12 +332,12 @@ jobs:
           # cleanly here and ours does not, the abort is this tree's, and if
           # both abort it belongs to the image.  Whichever way it falls, it
           # is measured on the one machine rather than across two.
-          if pkgin -y install openjdk8 >/dev/null 2>&1 ||
-             pkg_add openjdk8 >/dev/null 2>&1; then
+          # It is already here: the setup above installs it as the boot JDK.
+          if [ -x /usr/pkg/java/openjdk8/bin/java ]; then
             /usr/pkg/java/openjdk8/bin/java -version
             echo "pkgsrc openjdk8 exit: $?"
           else
-            echo "pkgsrc openjdk8: could not install, not measured"
+            echo "pkgsrc openjdk8: not present, not measured"
           fi
           mkdir -p test-results
           cd test
