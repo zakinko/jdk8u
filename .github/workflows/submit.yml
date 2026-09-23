@@ -208,6 +208,7 @@ jobs:
             --disable-precompiled-headers \
             --disable-ccache \
             --with-toolchain-type=gcc \
+            --with-native-debug-symbols=internal \
             --with-jobs=4 --with-num-cores=4 --with-memory-size=8192 \
             || ( echo "Dumping config.log:" && cat config.log && exit 1 )
           gmake CONF_NAME=netbsd-x64 LOG_LEVEL=info images
@@ -324,7 +325,7 @@ jobs:
             cd /var/tmp && rm -f java.core
             "${GITHUB_WORKSPACE}/jdk8/j2sdk-image/bin/java" -version
             ls -l /var/tmp/java.core
-            gdb -batch -ex 'bt' -ex 'info threads' \
+            gdb -batch -ex 'thread apply all bt' \
                 "${GITHUB_WORKSPACE}/jdk8/j2sdk-image/bin/java" /var/tmp/java.core
           ) || :
           mkdir -p test-results
