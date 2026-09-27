@@ -55,10 +55,9 @@
 # The makefiles are split this way so that "make foo" will run faster by not
 # having to read the dependency files for the vm.
 
-# needs to be set here since this Makefile doesn't include defs.make
-OS_VENDOR:=$(shell uname -s)
-
 -include $(SPEC)
+# needs to be set here since this Makefile doesn't include defs.make
+include $(GAMMADIR)/make/bsd/makefiles/os_vendor.make
 include $(GAMMADIR)/make/scm.make
 include $(GAMMADIR)/make/defs.make
 include $(GAMMADIR)/make/altsrc.make

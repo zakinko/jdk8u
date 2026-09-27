@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -19,18 +19,23 @@
 # Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
 # or visit www.oracle.com if you need additional information or have any
 # questions.
-#  
+#
 
-include $(GAMMADIR)/make/bsd/makefiles/os_vendor.make
+# OS_VENDOR is the operating system the VM is built for, spelled the way
+# its uname -s spells it.  uname names the machine running make, which is
+# not that one when the VM is cross-compiled, so take configure's word for
+# the target where there is a spec and ask uname only where there is not.
 
-ifeq ($(OS_VENDOR), OpenBSD)
-SYSDEFS+= -DSTACKGHOST
+ifeq ($(OPENJDK_TARGET_OS_VENDOR), netbsd)
+  OS_VENDOR := NetBSD
+else ifeq ($(OPENJDK_TARGET_OS_VENDOR), freebsd)
+  OS_VENDOR := FreeBSD
+else ifeq ($(OPENJDK_TARGET_OS_VENDOR), openbsd)
+  OS_VENDOR := OpenBSD
+else ifeq ($(OPENJDK_TARGET_OS_VENDOR), dragonfly)
+  OS_VENDOR := DragonFly
+else ifeq ($(OPENJDK_TARGET_OS), macosx)
+  OS_VENDOR := Darwin
+else
+  OS_VENDOR := $(shell uname -s)
 endif
-
-# gcc 4.0 miscompiles this code in -m64
-OPT_CFLAGS/macro.o = -O0
-
-# Avoid ICE with gcc 4.2.1
-OPT_CFLAGS/mulnode.o = -O0
-
-CFLAGS += -D_LP64=1

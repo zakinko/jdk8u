@@ -188,6 +188,13 @@ ifeq ($(OS),)
   HOST := $(shell uname -n)
 endif
 
+# uname above names the machine running make.  When configure has named
+# a BSD or macOS target the VM is built for that instead, which is what a
+# cross build from Linux needs; without this it builds the Linux VM.
+ifneq ($(filter bsd macosx,$(OPENJDK_TARGET_OS)),)
+  OS=bsd
+endif
+
 # If not SunOS, not Linux not BSD and not AIX, assume Windows
 ifneq ($(OS), Linux)
   ifneq ($(OS), SunOS)

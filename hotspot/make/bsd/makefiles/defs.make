@@ -161,7 +161,7 @@ ifeq ($(JVM_VARIANTS),)
   endif
 endif
 
-OS_VENDOR:=$(shell uname -s)
+include $(GAMMADIR)/make/bsd/makefiles/os_vendor.make
 
 # determine if HotSpot is being built in JDK6 or earlier version
 JDK6_OR_EARLIER=0

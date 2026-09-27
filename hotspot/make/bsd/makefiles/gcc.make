@@ -22,7 +22,7 @@
 #  
 #
 
-OS_VENDOR = $(shell uname -s)
+include $(GAMMADIR)/make/bsd/makefiles/os_vendor.make
 
 #------------------------------------------------------------------------
 # CC, CXX & AS
