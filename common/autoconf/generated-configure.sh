@@ -4420,7 +4420,7 @@ VS_TOOLSET_SUPPORTED_2022=true
 #CUSTOM_AUTOCONF_INCLUDE
 
 # Do not change or remove the following line, it is needed for consistency checks:
-DATE_WHEN_GENERATED=1790487216
+DATE_WHEN_GENERATED=1790487227
 
 ###############################################################################
 #
@@ -13816,7 +13816,7 @@ test -n "$target_alias" &&
       VAR_OS_API=posix
       VAR_OS_ENV=macosx
       ;;
-    *bsd*)
+    *bsd*|*dragonfly*)
       VAR_OS=bsd
       VAR_OS_API=posix
       VAR_OS_ENV=bsd
@@ -13851,6 +13851,9 @@ test -n "$target_alias" &&
       ;;
     *freebsd*)
       VAR_OS_VENDOR=freebsd
+      ;;
+    *dragonfly*)
+      VAR_OS_VENDOR=dragonfly
       ;;
     *)
       VAR_OS_VENDOR="$VAR_OS"
@@ -13982,7 +13985,7 @@ $as_echo "$OPENJDK_BUILD_OS-$OPENJDK_BUILD_CPU" >&6; }
       VAR_OS_API=posix
       VAR_OS_ENV=macosx
       ;;
-    *bsd*)
+    *bsd*|*dragonfly*)
       VAR_OS=bsd
       VAR_OS_API=posix
       VAR_OS_ENV=bsd
@@ -14017,6 +14020,9 @@ $as_echo "$OPENJDK_BUILD_OS-$OPENJDK_BUILD_CPU" >&6; }
       ;;
     *freebsd*)
       VAR_OS_VENDOR=freebsd
+      ;;
+    *dragonfly*)
+      VAR_OS_VENDOR=dragonfly
       ;;
     *)
       VAR_OS_VENDOR="$VAR_OS"

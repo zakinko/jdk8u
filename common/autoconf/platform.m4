@@ -135,7 +135,7 @@ AC_DEFUN([PLATFORM_EXTRACT_VARS_FROM_OS],
       VAR_OS_API=posix
       VAR_OS_ENV=macosx
       ;;
-    *bsd*)
+    *bsd*|*dragonfly*)
       VAR_OS=bsd
       VAR_OS_API=posix
       VAR_OS_ENV=bsd
@@ -170,6 +170,9 @@ AC_DEFUN([PLATFORM_EXTRACT_VARS_FROM_OS],
       ;;
     *freebsd*)
       VAR_OS_VENDOR=freebsd
+      ;;
+    *dragonfly*)
+      VAR_OS_VENDOR=dragonfly
       ;;
     *)
       VAR_OS_VENDOR="$VAR_OS"
