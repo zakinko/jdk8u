@@ -119,8 +119,10 @@ static inline int m68k_lock_test_and_set(volatile int *ptr, int newval) {
 #include <sys/atomic.h>
 #define __kernel_cmpxchg(oldval, newval, ptr) ((unsigned int)(oldval) != atomic_cas_uint((volatile unsigned int*)(ptr), (unsigned int)(oldval), (unsigned int)(newval)))
 #else
-typedef int (__kernel_cmpxchg_t)(int oldval, int newval, volatile int *ptr);
-#define __kernel_cmpxchg (*(__kernel_cmpxchg_t *) 0xffff0fc0)
+// 0xffff0fc0 is Linux's kuser helper page, which no BSD maps, so calling
+// it faults on the first contended word.  Every armv7 has ldrex/strex, and
+// the compiler's builtin is a full barrier as the helper is.
+#define __kernel_cmpxchg(oldval, newval, ptr) (!__sync_bool_compare_and_swap((volatile int*)(ptr), (int)(oldval), (int)(newval)))
 #endif
 
 
