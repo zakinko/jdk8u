@@ -4420,7 +4420,7 @@ VS_TOOLSET_SUPPORTED_2022=true
 #CUSTOM_AUTOCONF_INCLUDE
 
 # Do not change or remove the following line, it is needed for consistency checks:
-DATE_WHEN_GENERATED=1779849897
+DATE_WHEN_GENERATED=1790487216
 
 ###############################################################################
 #
@@ -41472,6 +41472,19 @@ rm -f core conftest.err conftest.$ac_objext \
     # This is later checked when setting flags.
   fi
 
+  if test "x$TOOLCHAIN_TYPE" = xgcc; then
+    if test "x$OPENJDK_TARGET_CPU_ARCH" = "xaarch64" ; then
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for broken aarch64 gcc 4.x" >&5
+$as_echo_n "checking for broken aarch64 gcc 4.x... " >&6; }
+      COMPILER_VERSION_NUMBER_MAJOR=`$ECHO "$COMPILER_VERSION_NUMBER" | $SED  "s/[^0-9].*//"`
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: found $COMPILER_VERSION_NUMBER_MAJOR.x" >&5
+$as_echo "found $COMPILER_VERSION_NUMBER_MAJOR.x" >&6; }
+      if test $COMPILER_VERSION_NUMBER_MAJOR -lt 5; then
+        as_fn_error $? "GCC < 5 may incorrectly compile HotSpot on aarch64. See JDK-8360869." "$LINENO" 5
+      fi
+    fi
+  fi
+
   # Check for broken SuSE 'ld' for which 'Only anonymous version tag is allowed
   # in executable.'
   USING_BROKEN_SUSE_LD=no
@@ -42923,6 +42936,7 @@ fi
         ;;
     esac
 
+
   REFERENCE_VERSION=6
 
   if  [[ "$REFERENCE_VERSION" =~ (.*\.){3} ]] ; then
@@ -43139,6 +43153,7 @@ $as_echo "$supports" >&6; }
   else
     :
   fi
+
 
     # Check that the compiler supports -Wformat-overflow flag
     # Set USE_FORMAT_OVERFLOW to 1 if it does.
@@ -46518,7 +46533,7 @@ $as_echo "$GIFLIB_H_FOUND" >&6; }
     if test "x$GIFLIB_H_FOUND" = xno; then
 
   # Print a helpful message on how to acquire the necessary build dependency.
-  # giflib is the help tag: freetype, cups, pulse, alsa etc
+  # giflib is the help tag: cups, pulse, alsa etc
   MISSING_DEPENDENCY=giflib
 
   if test "x$OPENJDK_BUILD_OS_ENV" = "xwindows.cygwin"; then
@@ -46647,7 +46662,7 @@ fi
     if test "x$GIFLIB_LIB_FOUND" = xno; then
 
   # Print a helpful message on how to acquire the necessary build dependency.
-  # giflib is the help tag: freetype, cups, pulse, alsa etc
+  # giflib is the help tag: cups, pulse, alsa etc
   MISSING_DEPENDENCY=giflib
 
   if test "x$OPENJDK_BUILD_OS_ENV" = "xwindows.cygwin"; then
