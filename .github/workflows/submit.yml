@@ -5,6 +5,8 @@ on:
     branches-ignore:
       - master
       - pr/*
+      # bsd-all.yml builds and tests the BSDs there.
+      - claude/**
   workflow_dispatch:
     inputs:
       platforms:
