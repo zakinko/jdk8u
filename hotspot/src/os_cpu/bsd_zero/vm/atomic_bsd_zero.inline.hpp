@@ -260,7 +260,7 @@ inline jint Atomic::xchg(jint exchange_value, volatile jint* dest) {
 inline intptr_t Atomic::xchg_ptr(intptr_t exchange_value,
                                  volatile intptr_t* dest) {
 #ifdef ARM
-  return arm_lock_test_and_set(dest, exchange_value);
+  return arm_lock_test_and_set((volatile int*)dest, exchange_value);
 #else
 #ifdef M68K
   return m68k_lock_test_and_set(dest, exchange_value);
