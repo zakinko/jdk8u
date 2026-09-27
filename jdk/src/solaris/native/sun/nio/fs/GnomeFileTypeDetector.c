@@ -35,7 +35,7 @@
 #include <strings.h>
 #endif
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(_ALLBSD_SOURCE)
 #include <string.h>
 #endif
 
