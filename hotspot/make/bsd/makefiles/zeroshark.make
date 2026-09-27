@@ -32,8 +32,12 @@ endif
 # Suppress some warning flags that are normally turned on for hotspot,
 # because some of the zero code has not been updated accordingly.
 WARNING_FLAGS += -Wno-return-type \
-  -Wno-format-nonliteral -Wno-format-security \
-  -Wno-maybe-uninitialized
+  -Wno-format-nonliteral -Wno-format-security
+# -Wmaybe-uninitialized is gcc's alone; clang, which the BSDs build with,
+# stops at an option it does not know when warnings are errors.
+ifneq ($(USE_CLANG), true)
+  WARNING_FLAGS += -Wno-maybe-uninitialized
+endif
 
 
 # If FDLIBM_CFLAGS is non-empty it holds CFLAGS needed to be passed to
