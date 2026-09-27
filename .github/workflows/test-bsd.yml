@@ -1,0 +1,236 @@
+#
+# Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+#
+
+#
+# Run tier1 on a real BSD, in a virtual machine on the Linux runner, against
+# the image build-bsd.yml cross-compiled.  NetBSD, FreeBSD, OpenBSD and
+# DragonFly each boot through their own vmactions action and run
+# .github/scripts/bsd-tier1-in-vm.sh.
+#
+# 8's tier1 is jdk_tier1, langtools_tier1 and hotspot_tier1.  Each is split
+# along the groups and directories it is made of, so that no part comes
+# near a hosted job's six hours in an emulated guest.
+#
+name: 'Test (bsd)'
+
+on:
+  workflow_call:
+    inputs:
+      target-os:
+        required: true
+        type: string
+      platform:
+        description: 'The conf-name the image was built under'
+        required: true
+        type: string
+      release:
+        description: 'The BSD release to run in, the one the sysroot is from'
+        required: true
+        type: string
+      arch:
+        description: >-
+          The machine the guest runs as.  Empty is the image's own default,
+          which is x86_64.  A guest whose architecture differs from the
+          runner's is emulated, so aarch64 belongs with an arm64 runner.
+        required: false
+        type: string
+        default: ''
+      runner:
+        description: 'The GitHub runner to boot the guest on'
+        required: false
+        type: string
+        default: 'ubuntu-24.04'
+
+jobs:
+  test:
+    name: test
+    runs-on: ${{ inputs.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: 'jdk/tier1 lang',          dir: jdk,       tests: ':jdk_lang',               slug: jdk-lang}
+          - {name: 'jdk/tier1 util',          dir: jdk,       tests: ':jdk_util',               slug: jdk-util}
+          - {name: 'jdk/tier1 math jdi',      dir: jdk,       tests: ':jdk_math :jdk_jdi',      slug: jdk-math-jdi}
+          - {name: 'langtools/tier1',         dir: langtools, tests: ':langtools_tier1',        slug: langtools}
+          # hotspot_tier1 is :jdk, which for a full JDK is every one of
+          # these directories.
+          - {name: 'hotspot/tier1 compiler',  dir: hotspot,   tests: 'compiler',                slug: hs-compiler}
+          - {name: 'hotspot/tier1 gc',        dir: hotspot,   tests: 'gc',                      slug: hs-gc}
+          - {name: 'hotspot/tier1 runtime',   dir: hotspot,   tests: 'runtime',                 slug: hs-runtime}
+          - {name: 'hotspot/tier1 other',     dir: hotspot,   tests: 'serviceability sanity testlibrary_tests', slug: hs-other}
+
+    steps:
+      # The tests are compiled where they run, so the guest needs their
+      # sources and nothing else of the tree.
+      - name: 'Checkout the tests'
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github
+            jdk/test
+            langtools/test
+            hotspot/test
+            test
+
+      - name: 'Get jtreg'
+        uses: actions/download-artifact@v4
+        with:
+          name: jtreg
+          path: jtreg
+
+      - name: 'Get the image'
+        uses: actions/download-artifact@v4
+        with:
+          name: jdk-${{ inputs.platform }}
+          path: bundle
+
+      - name: 'Say whether this runner can accelerate a guest'
+        run: |
+          echo "runner: ${{ runner.os }} ${{ runner.arch }}"
+          ls -l /dev/kvm || echo "/dev/kvm: absent, the guest will be emulated"
+
+      - name: 'Run tests in a NetBSD virtual machine'
+        uses: vmactions/netbsd-vm@v1
+        with:
+          release: ${{ inputs.release }}
+          arch: ${{ inputs.arch }}
+          mem: 8192
+          cpu: 4
+          usesh: true
+          copyback: true
+          envs: 'TEST_DIR TESTS'
+          # -U: the image carries some of these already, and pkg_add
+          # refuses a newer version from the mirror without it.
+          prepare: |
+            /usr/sbin/pkg_add -U bash alsa-lib
+          run: sh .github/scripts/bsd-tier1-in-vm.sh "$TEST_DIR" $TESTS
+        env:
+          TEST_DIR: ${{ matrix.dir }}
+          TESTS: ${{ matrix.tests }}
+        if: inputs.target-os == 'netbsd'
+
+      # jtreg's process tests read /proc, which FreeBSD does not mount.
+      - name: 'Run tests in a FreeBSD virtual machine'
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: ${{ inputs.release }}
+          arch: ${{ inputs.arch }}
+          mem: 8192
+          cpu: 4
+          usesh: true
+          copyback: true
+          envs: 'TEST_DIR TESTS'
+          prepare: |
+            mount -t procfs proc /proc
+            pkg install -y bash alsa-lib
+          run: sh .github/scripts/bsd-tier1-in-vm.sh "$TEST_DIR" $TESTS
+        env:
+          TEST_DIR: ${{ matrix.dir }}
+          TESTS: ${{ matrix.tests }}
+        if: inputs.target-os == 'freebsd'
+
+      # OpenBSD refuses a writable and executable mapping on a file system
+      # not mounted wxallowed, and the workspace is under /home.  The JDK
+      # links against libiconv, which OpenBSD ships as a package.
+      - name: 'Run tests in an OpenBSD virtual machine'
+        uses: vmactions/openbsd-vm@v1
+        with:
+          release: ${{ inputs.release }}
+          arch: ${{ inputs.arch }}
+          mem: 8192
+          cpu: 4
+          usesh: true
+          copyback: true
+          envs: 'TEST_DIR TESTS'
+          prepare: |
+            mount -u -o wxallowed /home
+            until pkg_add bash libiconv; do
+              echo retrying in 10 seconds; sleep 10
+            done
+          run: sh .github/scripts/bsd-tier1-in-vm.sh "$TEST_DIR" $TESTS
+        env:
+          TEST_DIR: ${{ matrix.dir }}
+          TESTS: ${{ matrix.tests }}
+        if: inputs.target-os == 'openbsd'
+
+      - name: 'Run tests in a DragonFly virtual machine'
+        uses: vmactions/dragonflybsd-vm@v1
+        with:
+          release: ${{ inputs.release }}
+          mem: 8192
+          cpu: 4
+          usesh: true
+          copyback: true
+          envs: 'TEST_DIR TESTS'
+          prepare: |
+            pkg install -y bash alsa-lib
+          run: sh .github/scripts/bsd-tier1-in-vm.sh "$TEST_DIR" $TESTS
+        env:
+          TEST_DIR: ${{ matrix.dir }}
+          TESTS: ${{ matrix.tests }}
+        if: inputs.target-os == 'dragonfly'
+
+      - name: 'Package test results'
+        run: |
+          mkdir -p results
+          if [ -d build ]; then
+            # hs_err too: a crashing test's .jtr names no frame, the hs_err
+            # file does.
+            find build -name '*.jtr' -o -name 'summary.txt' -o -name '*.txt' -path '*/text/*' \
+                       -o -name 'hs_err_pid*.log' -o -name 'replay_pid*.log' |
+              while read f; do
+                d="results/$(dirname "$f")"; mkdir -p "$d"; cp "$f" "$d/"
+              done
+          fi
+        if: always()
+
+      - name: 'Upload test results'
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ inputs.platform }}-${{ matrix.slug }}
+          path: results
+          retention-days: 14
+        if: always()
+
+      # jtreg's verdict is written to a file rather than returned, so that
+      # the VM step succeeds and the workspace is copied back.  Read it here.
+      # Absent results are a failure too: an empty workspace would otherwise
+      # look exactly like a clean run.
+      - name: 'Fail the job when a test failed'
+        run: |
+          if [ ! -f build/jtreg-exit ]; then
+            echo "build/jtreg-exit is not here.  Either the VM's workspace"
+            echo "did not come back or jtreg never ran; nothing can be said"
+            echo "about the tests."
+            exit 1
+          fi
+          rc=$(cat build/jtreg-exit)
+          if [ "$rc" != 0 ]; then
+            echo "jtreg exited $rc -- the names are in the log above, the .jtr"
+            echo "and hs_err files in the results artifact"
+            exit 1
+          fi

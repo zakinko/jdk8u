@@ -1,0 +1,190 @@
+#
+# Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+#
+
+name: 'Build (bsd)'
+
+# There is no BSD runner, so the BSDs are cross-compiled from Linux with
+# clang against a sysroot made of the operating system's own distribution
+# sets, the same scheme the newer releases use.  It cannot run a line of
+# what it produces; test-bsd.yml does that, in a virtual machine.
+#
+# GhostBSD needs no entry of its own: it is FreeBSD underneath and the
+# same target triple.
+
+on:
+  workflow_call:
+    inputs:
+      extra-conf-options:
+        required: false
+        type: string
+      targets:
+        description: 'JSON matrix of targets to cross-build'
+        required: true
+        type: string
+
+jobs:
+  build-bsd:
+    name: build
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(inputs.targets) }}
+
+    steps:
+      - name: 'Checkout the JDK source'
+        uses: actions/checkout@v4
+
+      - name: 'Install toolchain and dependencies'
+        run: |
+          sudo apt-get update
+          sudo apt-get install clang lld llvm autoconf zip unzip file jq \
+              libarchive-tools libcups2-dev libfontconfig1-dev \
+              libx11-dev libxext-dev libxrender-dev libxtst-dev libxt-dev \
+              libxi-dev libxrandr-dev
+          # NetBSD links with GNU ld rather than lld, and GNU ld knows only
+          # the architecture it was built for, so the target's own binutils
+          # has to be installed.  x86_64's comes with the runner.
+          if [ -n '${{ matrix.llvm-suffix }}' ]; then
+            v=$(echo '${{ matrix.llvm-suffix }}' | tr -d -)
+            sudo apt-get install "clang-$v" "lld-$v" "llvm-$v"
+          fi
+          if [ '${{ matrix.target-os }}' = netbsd ]; then
+            case '${{ matrix.arch }}' in
+              x86_64) gnu= ;;
+              i386)   gnu=i686-linux-gnu ;;
+              armv7)  gnu=arm-linux-gnueabihf ;;
+              *)      gnu='${{ matrix.arch }}-linux-gnu' ;;
+            esac
+            [ -z "$gnu" ] || sudo apt-get install "binutils-$gnu"
+          fi
+
+      - name: 'Check cache for sysroot'
+        id: get-cached-sysroot
+        uses: actions/cache@v4
+        with:
+          path: sysroot
+          key: sysroot8-${{ matrix.target-os }}-${{ matrix.arch }}-${{ hashFiles('./.github/scripts/gen-bsd-sysroot.sh') }}
+
+      - name: 'Create sysroot'
+        run: >
+          bash .github/scripts/gen-bsd-sysroot.sh
+          '${{ matrix.target-os }}' sysroot '${{ matrix.arch }}'
+        if: steps.get-cached-sysroot.outputs.cache-hit != 'true'
+
+      - name: 'Prepare the cross compiler'
+        run: >
+          bash .github/scripts/gen-bsd-crosstool.sh
+          '${{ matrix.target-os }}' '${{ matrix.target-triple }}'
+          "$PWD/sysroot" "$PWD/cross-bin" '${{ matrix.llvm-suffix }}'
+
+      # 8's config.sub predates the -eabihf suffix clang wants on NetBSD's
+      # 32-bit arm, so configure is given the triple without it; the
+      # compiler wrappers keep the full one.
+      #
+      # ALSA is where the sysroot script put it: pkgsrc's prefix on NetBSD,
+      # usr/local from the package on FreeBSD and DragonFly.  OpenBSD does
+      # not use it.
+      - name: 'Configure'
+        run: |
+          case '${{ matrix.target-os }}' in
+            netbsd)          alsa="--with-alsa-include=$PWD/sysroot/usr/pkg/include --with-alsa-lib=$PWD/sysroot/usr/pkg/lib" ;;
+            freebsd|dragonfly) alsa="--with-alsa-include=$PWD/sysroot/usr/local/include --with-alsa-lib=$PWD/sysroot/usr/local/lib" ;;
+            *)               alsa= ;;
+          esac
+          triple='${{ matrix.target-triple }}'
+          PATH="$PWD/cross-bin:$PATH" bash configure \
+            --with-conf-name=${{ matrix.conf-name }} \
+            --with-user-release-suffix=${GITHUB_ACTOR}-${GITHUB_SHA} \
+            --with-build-number=b00 \
+            --with-boot-jdk=${JAVA_HOME_8_X64} \
+            --openjdk-target=${triple%-eabihf} \
+            --with-sysroot=$PWD/sysroot \
+            --with-toolchain-type=clang \
+            --disable-headful \
+            --with-freetype=bundled \
+            --with-zlib=bundled \
+            --with-giflib=bundled \
+            --disable-precompiled-headers \
+            --disable-ccache \
+            --with-native-debug-symbols=none \
+            $alsa \
+            CC=${triple}-clang \
+            CXX=${triple}-clang++ \
+            BUILD_CC=clang \
+            BUILD_CXX=clang++ \
+            ${{ matrix.extra-configure }} \
+            ${{ inputs.extra-conf-options }} || (
+          echo "Dumping config.log:" &&
+          cat config.log &&
+          exit 1)
+
+      - name: 'Build'
+        run: |
+          PATH="$PWD/cross-bin:$PATH" make CONF_NAME=${{ matrix.conf-name }} \
+              LOG_LEVEL=info JOBS=$(nproc) images
+
+      # NetBSD 10's run-time linker refuses a shared object that does not
+      # have exactly two PT_LOAD segments, and reports the refusal as the
+      # file being missing.  Count them here, where the answer is
+      # unambiguous.
+      - name: 'Check the load segments NetBSD will accept'
+        run: |
+          seen=0
+          bad=0
+          for f in $(find build/${{ matrix.conf-name }}/images/j2sdk-image -name '*.so'); do
+            seen=$((seen + 1))
+            n=$(readelf -l "$f" | grep -c '^  LOAD')
+            if [ "$n" -gt 2 ]; then
+              echo "$f: $n PT_LOAD"
+              bad=$((bad + 1))
+            fi
+          done
+          if [ "$seen" -lt 20 ]; then
+            echo "only $seen shared objects found in the image;"
+            echo "this check is not looking where the libraries are."
+            exit 1
+          fi
+          if [ "$bad" -gt 0 ]; then
+            echo "$bad of $seen libraries have more than two PT_LOAD segments;"
+            echo "NetBSD 10 reports every one of them as not found."
+            exit 1
+          fi
+          echo "$seen shared objects, all with at most two PT_LOAD segments"
+        if: matrix.target-os == 'netbsd'
+
+      # The image is what a machine running the OS picks up to test with.
+      # 8 has no test bundle: the tests are compiled where they run.
+      - name: 'Pack the image'
+        run: |
+          tar -czf jdk-${{ matrix.conf-name }}.tar.gz \
+              -C build/${{ matrix.conf-name }}/images j2sdk-image
+
+      - name: 'Upload the image'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jdk-${{ matrix.conf-name }}
+          path: jdk-${{ matrix.conf-name }}.tar.gz
+          retention-days: 7
