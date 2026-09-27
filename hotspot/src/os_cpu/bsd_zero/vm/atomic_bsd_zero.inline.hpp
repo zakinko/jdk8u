@@ -296,8 +296,14 @@ inline jint Atomic::cmpxchg(jint exchange_value,
 inline jlong Atomic::cmpxchg(jlong exchange_value,
                              volatile jlong* dest,
                              jlong compare_value) {
-
-  return __sync_val_compare_and_swap(dest, compare_value, exchange_value);
+  // The i386 ABI aligns a jlong to four bytes, and clang will not compare
+  // and swap eight through a pointer it cannot assume is naturally
+  // aligned.  Say that it is: the VM keeps the jlongs it swaps on eight,
+  // and lock cmpxchg8b is atomic at any alignment anyway.  Where the ABI
+  // already aligns them to eight this changes nothing.
+  typedef jlong aligned_jlong __attribute__((aligned(8)));
+  return __sync_val_compare_and_swap((volatile aligned_jlong*)dest,
+                                     compare_value, exchange_value);
 }
 
 inline intptr_t Atomic::cmpxchg_ptr(intptr_t exchange_value,
