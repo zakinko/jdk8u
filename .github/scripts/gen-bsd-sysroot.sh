@@ -182,7 +182,24 @@ case "$os" in
       x86_64) abi=FreeBSD:15:amd64 ;;
       *)      abi=FreeBSD:15:$arch ;;
     esac
-    freebsd_pkg https://pkg.freebsd.org/$abi/quarterly alsa-lib
+    # Not every machine has a quarterly branch: on 2026-09-27 both
+    # FreeBSD:15:powerpc64 and powerpc64le answered 404 for it, so take
+    # latest where quarterly is missing.
+    repo=
+    for branch in quarterly latest; do
+      for f in packagesite.pkg data.pkg; do
+        if curl -fsSIL --retry 2 --max-time 60 \
+            "https://pkg.freebsd.org/$abi/$branch/$f" > /dev/null 2>&1; then
+          repo=https://pkg.freebsd.org/$abi/$branch
+          break 2
+        fi
+      done
+    done
+    if [ -z "$repo" ]; then
+      echo "pkg.freebsd.org has no $abi repository, quarterly or latest" >&2
+      exit 1
+    fi
+    freebsd_pkg "$repo" alsa-lib
     ;;
 
   openbsd)
