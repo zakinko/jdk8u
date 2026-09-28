@@ -233,6 +233,13 @@ SUPPORT_HEADFUL:=@SUPPORT_HEADFUL@
 SUPPORT_HEADLESS:=@SUPPORT_HEADLESS@
 # Legacy defines controlled by the SUPPORT_HEADLESS and SUPPORT_HEADFUL options.
 @BUILD_HEADLESS@
+# The makefiles leave out the X11 libraries -- libawt_xawt, libsplashscreen
+# -- and link libjawt against libawt_headless when this is defined, and
+# nothing else defined it, so --disable-headful still linked them against
+# an X11 it had said it did not need.
+ifeq ($(SUPPORT_HEADFUL), no)
+  BUILD_HEADLESS_ONLY:=true
+endif
 
 # These are the libjvms that we want to build.
 # The java launcher uses the default.
