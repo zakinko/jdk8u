@@ -76,9 +76,11 @@ ifeq ($(OPENJDK_TARGET_OS), aix)
 endif # OPENJDK_TARGET_OS aix
 
 ifeq ($(OPENJDK_TARGET_OS), bsd)
-  ifneq ($(OPENJDK_TARGET_OS_VENDOR), openbsd)
+  # configure leaves ALSA_LIBS empty where there is no ALSA to link: always
+  # on OpenBSD, and on the others when configured --without-alsa.
+  ifneq ($(ALSA_LIBS), )
     EXTRA_SOUND_JNI_LIBS += jsoundalsa
-  endif # OPENJDK_TARGET_OS_VENDOR openbsd
+  endif
   LIBJSOUND_CFLAGS += -DX_PLATFORM=X_BSD
 endif # OPENJDK_TARGET_OS bsd
 

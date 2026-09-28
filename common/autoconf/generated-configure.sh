@@ -4420,7 +4420,7 @@ VS_TOOLSET_SUPPORTED_2022=true
 #CUSTOM_AUTOCONF_INCLUDE
 
 # Do not change or remove the following line, it is needed for consistency checks:
-DATE_WHEN_GENERATED=1790487227
+DATE_WHEN_GENERATED=1790637687
 
 ###############################################################################
 #
@@ -46012,6 +46012,14 @@ if test "${with_alsa_lib+set}" = set; then :
   withval=$with_alsa_lib;
 fi
 
+
+  # A BSD may have no ALSA to build against: OpenBSD never has one, and the
+  # others do not package it for every machine.  There --without-alsa
+  # leaves the ALSA sound library out, as OpenBSD always does.
+  if test "x$OPENJDK_TARGET_OS" = xbsd && test "x${with_alsa}" = xno; then
+    ALSA_NOT_NEEDED=yes
+    with_alsa=
+  fi
 
   if test "x$ALSA_NOT_NEEDED" = xyes; then
     if test "x${with_alsa}" != x || test "x${with_alsa_include}" != x || test "x${with_alsa_lib}" != x; then

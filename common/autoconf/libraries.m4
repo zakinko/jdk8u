@@ -491,6 +491,14 @@ AC_DEFUN_ONCE([LIB_SETUP_ALSA],
   AC_ARG_WITH(alsa-lib, [AS_HELP_STRING([--with-alsa-lib],
       [specify directory for the alsa library])])
 
+  # A BSD may have no ALSA to build against: OpenBSD never has one, and the
+  # others do not package it for every machine.  There --without-alsa
+  # leaves the ALSA sound library out, as OpenBSD always does.
+  if test "x$OPENJDK_TARGET_OS" = xbsd && test "x${with_alsa}" = xno; then
+    ALSA_NOT_NEEDED=yes
+    with_alsa=
+  fi
+
   if test "x$ALSA_NOT_NEEDED" = xyes; then
     if test "x${with_alsa}" != x || test "x${with_alsa_include}" != x || test "x${with_alsa_lib}" != x; then
       AC_MSG_WARN([alsa not used, so --with-alsa is ignored])
