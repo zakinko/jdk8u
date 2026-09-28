@@ -42,7 +42,7 @@ jobs:
           {"target-os": "dragonfly", "arch": "x86_64", "target-triple": "x86_64-unknown-dragonfly", "conf-name": "bsd-x86_64-dragonfly"},
           {"target-os": "netbsd", "arch": "aarch64", "target-triple": "aarch64-unknown-netbsd", "conf-name": "bsd-aarch64-netbsd"},
           {"target-os": "freebsd", "arch": "aarch64", "target-triple": "aarch64-unknown-freebsd15.1", "conf-name": "bsd-aarch64-freebsd"},
-          {"target-os": "openbsd", "arch": "aarch64", "target-triple": "aarch64-unknown-openbsd7.9", "conf-name": "bsd-aarch64-openbsd", "llvm-suffix": "-19"},
+          {"target-os": "openbsd", "arch": "aarch64", "target-triple": "aarch64-unknown-openbsd7.9", "conf-name": "bsd-aarch64-openbsd", "llvm-suffix": "-21"},
           {"target-os": "freebsd", "arch": "powerpc64", "target-triple": "powerpc64-unknown-freebsd15.1", "conf-name": "bsd-ppc64-freebsd"},
           {"target-os": "freebsd", "arch": "powerpc64le", "target-triple": "powerpc64le-unknown-freebsd15.1", "conf-name": "bsd-ppc64le-freebsd"},
           {"target-os": "openbsd", "arch": "powerpc64", "target-triple": "powerpc64-unknown-openbsd7.9", "conf-name": "bsd-ppc64-openbsd", "llvm-suffix": "-20"},
@@ -66,7 +66,7 @@ jobs:
           {"target-os": "netbsd", "arch": "sparc64", "target-triple": "sparc64-unknown-netbsd", "conf-name": "bsd-sparcv9-netbsd-zero", "extra-configure": "LIBFFI_CFLAGS=-I$PWD/sysroot/usr/pkg/include LIBFFI_LIBS=\"-L$PWD/sysroot/usr/pkg/lib -lffi\""},
           {"target-os": "openbsd", "arch": "sparc64", "target-triple": "sparc64-unknown-openbsd7.9", "conf-name": "bsd-sparcv9-openbsd-zero", "extra-configure": "LIBFFI_CFLAGS=-I$PWD/sysroot/usr/local/include LIBFFI_LIBS=\"-L$PWD/sysroot/usr/local/lib -lffi\""},
           {"target-os": "netbsd", "arch": "armv7", "target-triple": "armv7-unknown-netbsd-eabihf", "conf-name": "bsd-arm-netbsd-zero", "extra-configure": "LIBFFI_CFLAGS=-I$PWD/sysroot/usr/pkg/include LIBFFI_LIBS=\"-L$PWD/sysroot/usr/pkg/lib -lffi\""},
-          {"target-os": "openbsd", "arch": "armv7", "target-triple": "armv7-unknown-openbsd7.9", "conf-name": "bsd-arm-openbsd-zero", "extra-configure": "LIBFFI_CFLAGS=-I$PWD/sysroot/usr/local/include LIBFFI_LIBS=\"-L$PWD/sysroot/usr/local/lib -lffi\""},
+          {"target-os": "openbsd", "arch": "armv7", "target-triple": "armv7-unknown-openbsd7.9", "conf-name": "bsd-arm-openbsd-zero", "llvm-suffix": "-21", "extra-configure": "LIBFFI_CFLAGS=-I$PWD/sysroot/usr/local/include LIBFFI_LIBS=\"-L$PWD/sysroot/usr/local/lib -lffi\""},
           {"target-os": "netbsd", "arch": "riscv64", "target-triple": "riscv64-unknown-netbsd", "conf-name": "bsd-riscv64-netbsd-zero", "extra-configure": "LIBFFI_CFLAGS=-I$PWD/sysroot/usr/pkg/include LIBFFI_LIBS=\"-L$PWD/sysroot/usr/pkg/lib -lffi\""},
           {"target-os": "openbsd", "arch": "riscv64", "target-triple": "riscv64-unknown-openbsd7.9", "conf-name": "bsd-riscv64-openbsd-zero", "extra-configure": "LIBFFI_CFLAGS=-I$PWD/sysroot/usr/local/include LIBFFI_LIBS=\"-L$PWD/sysroot/usr/local/lib -lffi\""}]}
 
