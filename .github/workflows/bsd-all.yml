@@ -48,8 +48,8 @@ jobs:
           {"target-os": "openbsd", "arch": "powerpc64", "target-triple": "powerpc64-unknown-openbsd7.9", "conf-name": "bsd-ppc64-openbsd", "llvm-suffix": "-20"},
           {"target-os": "netbsd", "arch": "i386", "target-triple": "i386-unknown-netbsd", "conf-name": "bsd-i386-netbsd"},
           {"target-os": "openbsd", "arch": "i386", "target-triple": "i386-unknown-openbsd7.9", "conf-name": "bsd-i386-openbsd", "llvm-suffix": "-20"},
-          {"target-os": "netbsd", "arch": "sparc64", "target-triple": "sparc64-unknown-netbsd", "conf-name": "bsd-sparcv9-netbsd", "extra-configure": "--with-extra-cflags=-mcmodel=medany --with-extra-cxxflags=-mcmodel=medany"},
-          {"target-os": "openbsd", "arch": "sparc64", "target-triple": "sparc64-unknown-openbsd7.9", "conf-name": "bsd-sparcv9-openbsd", "extra-configure": "--with-extra-cflags=-mcmodel=medany --with-extra-cxxflags=-mcmodel=medany"}]}
+          {"target-os": "netbsd", "arch": "sparc64", "target-triple": "sparc64-unknown-netbsd", "conf-name": "bsd-sparcv9-netbsd"},
+          {"target-os": "openbsd", "arch": "sparc64", "target-triple": "sparc64-unknown-openbsd7.9", "conf-name": "bsd-sparcv9-openbsd"}]}
 
   zero:
     name: zero
@@ -63,8 +63,8 @@ jobs:
         {"include":[
           {"target-os": "netbsd", "arch": "i386", "target-triple": "i386-unknown-netbsd", "conf-name": "bsd-i386-netbsd-zero", "extra-configure": "LIBFFI_CFLAGS=-I$PWD/sysroot/usr/pkg/include LIBFFI_LIBS=\"-L$PWD/sysroot/usr/pkg/lib -lffi\""},
           {"target-os": "openbsd", "arch": "i386", "target-triple": "i386-unknown-openbsd7.9", "conf-name": "bsd-i386-openbsd-zero", "llvm-suffix": "-20", "extra-configure": "LIBFFI_CFLAGS=-I$PWD/sysroot/usr/local/include LIBFFI_LIBS=\"-L$PWD/sysroot/usr/local/lib -lffi\""},
-          {"target-os": "netbsd", "arch": "sparc64", "target-triple": "sparc64-unknown-netbsd", "conf-name": "bsd-sparcv9-netbsd-zero", "extra-configure": "LIBFFI_CFLAGS=-I$PWD/sysroot/usr/pkg/include LIBFFI_LIBS=\"-L$PWD/sysroot/usr/pkg/lib -lffi\" --with-extra-cflags=-mcmodel=medany --with-extra-cxxflags=-mcmodel=medany"},
-          {"target-os": "openbsd", "arch": "sparc64", "target-triple": "sparc64-unknown-openbsd7.9", "conf-name": "bsd-sparcv9-openbsd-zero", "extra-configure": "LIBFFI_CFLAGS=-I$PWD/sysroot/usr/local/include LIBFFI_LIBS=\"-L$PWD/sysroot/usr/local/lib -lffi\" --with-extra-cflags=-mcmodel=medany --with-extra-cxxflags=-mcmodel=medany"},
+          {"target-os": "netbsd", "arch": "sparc64", "target-triple": "sparc64-unknown-netbsd", "conf-name": "bsd-sparcv9-netbsd-zero", "extra-configure": "LIBFFI_CFLAGS=-I$PWD/sysroot/usr/pkg/include LIBFFI_LIBS=\"-L$PWD/sysroot/usr/pkg/lib -lffi\""},
+          {"target-os": "openbsd", "arch": "sparc64", "target-triple": "sparc64-unknown-openbsd7.9", "conf-name": "bsd-sparcv9-openbsd-zero", "extra-configure": "LIBFFI_CFLAGS=-I$PWD/sysroot/usr/local/include LIBFFI_LIBS=\"-L$PWD/sysroot/usr/local/lib -lffi\""},
           {"target-os": "netbsd", "arch": "armv7", "target-triple": "armv7-unknown-netbsd-eabihf", "conf-name": "bsd-arm-netbsd-zero", "extra-configure": "LIBFFI_CFLAGS=-I$PWD/sysroot/usr/pkg/include LIBFFI_LIBS=\"-L$PWD/sysroot/usr/pkg/lib -lffi\""},
           {"target-os": "openbsd", "arch": "armv7", "target-triple": "armv7-unknown-openbsd7.9", "conf-name": "bsd-arm-openbsd-zero", "extra-configure": "LIBFFI_CFLAGS=-I$PWD/sysroot/usr/local/include LIBFFI_LIBS=\"-L$PWD/sysroot/usr/local/lib -lffi\""},
           {"target-os": "netbsd", "arch": "riscv64", "target-triple": "riscv64-unknown-netbsd", "conf-name": "bsd-riscv64-netbsd-zero", "extra-configure": "LIBFFI_CFLAGS=-I$PWD/sysroot/usr/pkg/include LIBFFI_LIBS=\"-L$PWD/sysroot/usr/pkg/lib -lffi\""},

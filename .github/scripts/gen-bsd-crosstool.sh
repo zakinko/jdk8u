@@ -174,6 +174,13 @@ W
     ;;
 esac
 : "${common_extra:=}"
+# sparc64 is compiled with -mcmodel=medany, as 28 compiles it.  28 passes
+# it as an extra cflag; 8's configure hands those to the build machine's
+# compiler as well, which rejects it, so here it lives in the target's
+# wrapper.
+case "$triple" in
+  sparc64-*) common_extra="$common_extra -mcmodel=medany" ;;
+esac
 : "${ld_path:=}"
 if [ -n "$ld_path" ]; then ld_flag="--ld-path=$ld_path"; else ld_flag="-fuse-ld=lld"; fi
 
