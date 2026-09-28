@@ -121,7 +121,14 @@ jobs:
         run: |
           case '${{ matrix.target-os }}' in
             netbsd)          alsa="--with-alsa-include=$PWD/sysroot/usr/pkg/include --with-alsa-lib=$PWD/sysroot/usr/pkg/lib" ;;
-            freebsd|dragonfly) alsa="--with-alsa-include=$PWD/sysroot/usr/local/include --with-alsa-lib=$PWD/sysroot/usr/local/lib" ;;
+            freebsd|dragonfly)
+              # Where the OS has no alsa-lib package for this machine, the
+              # sysroot has none, and the JDK goes without the ALSA library.
+              if [ -f sysroot/usr/local/include/alsa/asoundlib.h ]; then
+                alsa="--with-alsa-include=$PWD/sysroot/usr/local/include --with-alsa-lib=$PWD/sysroot/usr/local/lib"
+              else
+                alsa=--without-alsa
+              fi ;;
             *)               alsa= ;;
           esac
           triple='${{ matrix.target-triple }}'

@@ -195,11 +195,15 @@ case "$os" in
         fi
       done
     done
+    # FreeBSD builds no packages at all for some machines -- powerpc64 and
+    # powerpc64le among them -- and there the JDK is configured
+    # --without-alsa (build-bsd.yml looks for the header this leaves out).
     if [ -z "$repo" ]; then
-      echo "pkg.freebsd.org has no $abi repository, quarterly or latest" >&2
-      exit 1
+      echo "pkg.freebsd.org has no $abi repository, quarterly or latest;"
+      echo "the sysroot has no ALSA and the build goes without it"
+    else
+      freebsd_pkg "$repo" alsa-lib
     fi
-    freebsd_pkg "$repo" alsa-lib
     ;;
 
   openbsd)
