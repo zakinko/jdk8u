@@ -547,16 +547,17 @@ endif
 
 ##########################################################################################
 
-# NetBSD has iconv(3) in its C library; FreeBSD, DragonFly and OpenBSD take
-# it from a package under $(PACKAGE_PATH), and on the first two that package
-# wants LIBICONV_PLUG so its header does not rename the symbols.
+# NetBSD, FreeBSD and DragonFly have iconv(3) in their C library; OpenBSD
+# alone takes it from a package under $(PACKAGE_PATH).  Where the ports'
+# libiconv is installed as well, its <iconv.h> renames the functions to its
+# own unless LIBICONV_PLUG is defined, so FreeBSD and DragonFly define it
+# to keep calling libc's.
 ifeq ($(OPENJDK_TARGET_OS), bsd)
-  ifneq ($(OPENJDK_TARGET_OS_VENDOR), netbsd)
+  ifeq ($(OPENJDK_TARGET_OS_VENDOR), openbsd)
     BSD_ICONV_CFLAGS := -I$(PACKAGE_PATH)/include
     BSD_ICONV_LIBS := -L$(PACKAGE_PATH)/lib -liconv
-    ifneq ($(OPENJDK_TARGET_OS_VENDOR), openbsd)
-      BSD_ICONV_CFLAGS += -DLIBICONV_PLUG
-    endif
+  else ifneq ($(OPENJDK_TARGET_OS_VENDOR), netbsd)
+    BSD_ICONV_CFLAGS := -DLIBICONV_PLUG
   endif
 endif
 
