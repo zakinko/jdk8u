@@ -2463,7 +2463,7 @@ static char* anon_mmap(char* requested_addr, size_t bytes, size_t alignment_hint
   if (fixed) {
     assert((uintptr_t)requested_addr % os::Bsd::page_size() == 0, "unaligned address");
     flags |= MAP_FIXED;
-#if !defined(__OpenBSD__) && !defined(__APPLE__)
+#ifdef MAP_ALIGNED
   } else if (alignment_hint > 0) {
     flags |= MAP_ALIGNED(ffs(alignment_hint) - 1);
 #endif
