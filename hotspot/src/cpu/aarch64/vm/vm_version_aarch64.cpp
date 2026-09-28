@@ -199,7 +199,7 @@ void VM_Version::get_processor_features() {
     }
     fclose(f);
   }
-#elif defined(__FreeBSD__) || defined(__OpenBSD__)
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
   char buf[512];
   int cpu_lines = 0;
   unsigned long auxv = os_get_processor_features();

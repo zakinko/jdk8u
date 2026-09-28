@@ -30,6 +30,10 @@
 #if defined (__FreeBSD__)
 #include <machine/elf.h>
 #endif
+#if defined (__NetBSD__)
+#include <stdio.h>
+#include <sys/sysctl.h>
+#endif
 
 #ifndef HWCAP_ASIMD
 #define HWCAP_ASIMD (1<<1)
@@ -201,7 +205,62 @@ const struct cpu_implementers cpu_implementers[] = {
 	CPU_IMPLEMENTER_NONE,
 };
 
-#ifdef __OpenBSD__
+#if defined(__NetBSD__)
+// NetBSD traps an MRS of the EL1 identification registers, as OpenBSD
+// does, but hands every CPU's copy of them over through sysctl
+// machdep.cpuN.cpu_id.  A feature is reported only when every CPU has it,
+// since a thread may run on any of them; the implementer and part are
+// those of the last CPU read.
+unsigned long VM_Version::os_get_processor_features() {
+  int mib[] = { CTL_HW, HW_NCPU };
+  int ncpu = 0;
+  size_t len = sizeof(ncpu);
+  if (sysctl(mib, 2, &ncpu, &len, NULL, 0) < 0 || ncpu <= 0) {
+    return 0;
+  }
+  int num_asimd = 0, num_aes = 0, num_pmull = 0, num_sha1 = 0;
+  int num_sha2 = 0, num_crc32 = 0, num_lse = 0;
+  uint64_t midr = 0;
+  for (int curcpu = 0; curcpu < ncpu; curcpu++) {
+    struct aarch64_sysctl_cpu_id id;
+    char path[32];
+    len = sizeof(id);
+    snprintf(path, sizeof(path), "machdep.cpu%d.cpu_id", curcpu);
+    if (sysctlbyname(path, &id, &len, NULL, 0) < 0) {
+      continue;
+    }
+    midr = id.ac_midr;
+    if (__SHIFTOUT(id.ac_aa64pfr0, ID_AA64PFR0_EL1_ADVSIMD) == ID_AA64PFR0_EL1_ADV_SIMD_IMPL)
+      num_asimd++;
+    if (__SHIFTOUT(id.ac_aa64isar0, ID_AA64ISAR0_EL1_AES) >= ID_AA64ISAR0_EL1_AES_AES)
+      num_aes++;
+    if (__SHIFTOUT(id.ac_aa64isar0, ID_AA64ISAR0_EL1_AES) >= ID_AA64ISAR0_EL1_AES_PMUL)
+      num_pmull++;
+    if (__SHIFTOUT(id.ac_aa64isar0, ID_AA64ISAR0_EL1_SHA1) >= ID_AA64ISAR0_EL1_SHA1_SHA1CPMHSU)
+      num_sha1++;
+    if (__SHIFTOUT(id.ac_aa64isar0, ID_AA64ISAR0_EL1_SHA2) >= ID_AA64ISAR0_EL1_SHA2_SHA256HSU)
+      num_sha2++;
+    if (__SHIFTOUT(id.ac_aa64isar0, ID_AA64ISAR0_EL1_CRC32) >= ID_AA64ISAR0_EL1_CRC32_CRC32X)
+      num_crc32++;
+    if (__SHIFTOUT(id.ac_aa64isar0, ID_AA64ISAR0_EL1_ATOMIC) >= ID_AA64ISAR0_EL1_ATOMIC_SWP)
+      num_lse++;
+  }
+  unsigned long auxv = 0;
+  if (num_asimd == ncpu) auxv |= HWCAP_ASIMD;
+  if (num_aes == ncpu)   auxv |= HWCAP_AES;
+  if (num_pmull == ncpu) auxv |= HWCAP_PMULL;
+  if (num_sha1 == ncpu)  auxv |= HWCAP_SHA1;
+  if (num_sha2 == ncpu)  auxv |= HWCAP_SHA2;
+  if (num_crc32 == ncpu) auxv |= HWCAP_CRC32;
+  if (num_lse == ncpu)   auxv |= HWCAP_ATOMICS;
+
+  _cpu = CPU_IMPL(midr);
+  _model = CPU_PART(midr);
+  _variant = CPU_VAR(midr);
+  _revision = CPU_REV(midr);
+  return auxv;
+}
+#elif defined(__OpenBSD__)
 // READ_SPECIALREG is not available from userland on OpenBSD.
 // Hardcode these values to the "lowest common denominator"
 unsigned long VM_Version::os_get_processor_features() {

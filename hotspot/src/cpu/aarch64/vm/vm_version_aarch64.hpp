@@ -49,7 +49,7 @@ protected:
   };
   static PsrInfo _psr_info;
   static void get_processor_features();
-#if defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
   static unsigned long os_get_processor_features();
 #endif
 
