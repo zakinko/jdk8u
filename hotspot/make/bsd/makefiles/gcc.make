@@ -245,6 +245,14 @@ ARCHFLAG/ia64    =
 ARCHFLAG/sparc   = -m32 -mcpu=v9
 ARCHFLAG/sparcv9 = -m64 -mcpu=v9
 ARCHFLAG/zero    = $(ZERO_ARCHFLAG)
+# Zero's jlong compare-and-swap needs cmpxchg8b, which the i486 that clang
+# assumes for i386 lacks; without it every one becomes a call to
+# __atomic_compare_exchange_8, which nothing on the BSDs' link line
+# provides.  The i486 HotSpot build above asks for i586 for the same
+# reason.
+ifeq ($(ZERO_LIBARCH), i386)
+  ARCHFLAG/zero += -march=i586
+endif
 
 # Darwin-specific build flags
 ifeq ($(OS_VENDOR), Darwin)
