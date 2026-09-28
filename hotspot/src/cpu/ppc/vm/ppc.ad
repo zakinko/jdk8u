@@ -2321,31 +2321,13 @@ bool Matcher::float_in_double() { return true; }
 // the relevant 32 bits.
 const bool Matcher::int_in_long = true;
 
-// Constants for c2c and c calling conventions.
-
-const MachRegisterNumbers iarg_reg[8] = {
-  R3_num, R4_num, R5_num, R6_num,
-  R7_num, R8_num, R9_num, R10_num
-};
-
-const MachRegisterNumbers farg_reg[13] = {
-  F1_num, F2_num, F3_num, F4_num,
-  F5_num, F6_num, F7_num, F8_num,
-  F9_num, F10_num, F11_num, F12_num,
-  F13_num
-};
-
-const int num_iarg_registers = sizeof(iarg_reg) / sizeof(iarg_reg[0]);
-
-const int num_farg_registers = sizeof(farg_reg) / sizeof(farg_reg[0]);
-
 // Return whether or not this register is ever used as an argument. This
 // function is used on startup to build the trampoline stubs in generateOptoStub.
 // Registers not mentioned will be killed by the VM call in the trampoline, and
 // arguments in those registers not be available to the callee.
 bool Matcher::can_be_java_arg(int reg) {
-  // We return true for all registers contained in iarg_reg[] and
-  // farg_reg[] and their virtual halves.
+  // We return true for the integer argument registers R3-R10, the
+  // floating-point ones F1-F13, and their virtual halves.
   // We must include the virtual halves in order to get STDs and LDs
   // instead of STWs and LWs in the trampoline stubs.
 
