@@ -86,10 +86,11 @@ else
     SASRCFILES = $(SASRCDIR)/StubDebuggerLocal.c
     SALIBS = 
     SAARCH = $(ARCHFLAG)
+    SAMAPFILE = $(SASRCDIR)/mapfile-stub
   endif
 endif
 
-SAMAPFILE = $(SASRCDIR)/mapfile
+SAMAPFILE ?= $(SASRCDIR)/mapfile
 
 DEST_SAPROC           = $(JDK_LIBDIR)/$(LIBSAPROC)
 DEST_SAPROC_DEBUGINFO = $(JDK_LIBDIR)/$(LIBSAPROC_DEBUGINFO)
