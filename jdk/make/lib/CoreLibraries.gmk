@@ -62,6 +62,7 @@ ifneq ($(OPENJDK_TARGET_OS), macosx)
       CFLAGS_windows_debug := -DLOGGING, \
       CFLAGS_aix := -qfloat=nomaf, \
       CFLAGS_linux := $(LIBFDLIBM_CFLAGS), \
+      CFLAGS_bsd := $(LIBFDLIBM_CFLAGS), \
       ARFLAGS := $(ARFLAGS), \
       OBJECT_DIR := $(JDK_OUTPUTDIR)/objs/libfdlibm, \
       DEBUG_SYMBOLS := $(DEBUG_ALL_BINARIES)))
