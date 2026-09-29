@@ -203,6 +203,18 @@ void VM_Version::get_processor_features() {
   char buf[512];
   int cpu_lines = 0;
   unsigned long auxv = os_get_processor_features();
+
+  // The same features string and mask as on Linux: WhiteBox hands the
+  // string to the tests, which decide from it what the CPU can do.
+  strcpy(buf, "simd");
+  if (auxv & HWCAP_CRC32) strcat(buf, ", crc");
+  if (auxv & HWCAP_AES)   strcat(buf, ", aes");
+  if (auxv & HWCAP_SHA1)  strcat(buf, ", sha1");
+  if (auxv & HWCAP_SHA2)  strcat(buf, ", sha256");
+  if (auxv & HWCAP_ATOMICS) strcat(buf, ", lse");
+
+  _features_str = strdup(buf);
+  _cpuFeatures = auxv;
 #endif
 
   // Enable vendor specific features
