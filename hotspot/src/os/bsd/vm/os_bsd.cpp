@@ -2770,6 +2770,34 @@ char* os::pd_attempt_reserve_memory_at(size_t bytes, char* requested_addr) {
   // calculate the correct value before return.
   address old_highest = _highest_vm_reserved_address;
 
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+  // Neither of these places a mapping at a hint.  FreeBSD does not honour
+  // it at all with ASLR on, and DragonFly only where nothing is in the way,
+  // so the hint below and the retries after it never land where asked.
+  // Both have a flag meaning what Linux's MAP_FIXED_NOREPLACE means: the
+  // address asked for if it is free, and failure, not a clobbered mapping,
+  // if it is not.  They spell it differently.
+  {
+#ifdef __FreeBSD__
+    const int nonclobbering = MAP_FIXED | MAP_EXCL;
+#else
+    const int nonclobbering = MAP_TRYFIXED;
+#endif
+    char* fixed_addr = (char*)::mmap(requested_addr, bytes, PROT_NONE,
+                                     MAP_PRIVATE | MAP_ANONYMOUS | nonclobbering, -1, 0);
+    if (fixed_addr == requested_addr) {
+      if ((address)fixed_addr + bytes > _highest_vm_reserved_address) {
+        _highest_vm_reserved_address = (address)fixed_addr + bytes;
+      }
+      return requested_addr;
+    }
+    if (fixed_addr != (char*)MAP_FAILED) {
+      ::munmap(fixed_addr, bytes);
+    }
+    return NULL;
+  }
+#endif
+
   // Bsd mmap allows caller to pass an address as hint; give it a try first,
   // if kernel honors the hint then we can return immediately.
   char * addr = anon_mmap(requested_addr, bytes, 0, false);
