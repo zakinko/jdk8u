@@ -66,6 +66,14 @@ if [ "$os" = OpenBSD ]; then
   ulimit -Sd `ulimit -Hd`
 fi
 
+# JDI tests have the debuggee listen on the machine's own name
+# (address=freebsd:20995 and the like), and the images vmactions boots do
+# not all resolve it; the debuggee then fails in VM initialisation.
+h=`hostname`
+if [ -n "$h" ] && ! grep -Eq "[[:space:]]$h([[:space:]]|\$)" /etc/hosts; then
+  echo "127.0.0.1 $h" >> /etc/hosts
+fi
+
 # A crashing test leaves an hs_err file; a core of a 2GB heap on top of it
 # only fills the disk.
 ulimit -c 0
