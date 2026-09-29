@@ -71,8 +71,12 @@ H
 # FreeBSD and OpenBSD ship libc++, which clang finds by itself.
 case "$os" in
   netbsd)
-    cxx_extra="-stdlib=libstdc++ -isystem $sysroot/usr/include/g++"
-    rt_extra="--rtlib=libgcc"
+    cxx_extra="-isystem $sysroot/usr/include/g++"
+    # On the C driver as well as the C++ one: clang rewrites a -lstdc++ on
+    # any link line into "the C++ library", and for NetBSD it picks libc++
+    # unless told otherwise, so 8's unpack200, a C link with -lstdc++,
+    # stopped at "cannot find -lc++".
+    rt_extra="--rtlib=libgcc -stdlib=libstdc++"
     link_extra="-lgcc"
     # NetBSD's run-time linker maps a shared object itself, and up to and
     # including NetBSD 10 it handles exactly two PT_LOAD segments; anything
@@ -151,9 +155,9 @@ W
     cxxdir=${cxxdir%/}
     gccdir=$(ls -d "$sysroot"/usr/libdata/gcc*/ | sort -V | tail -1)
     gccdir=${gccdir%/}
-    cxx_extra="-stdlib=libstdc++ -nostdinc++ -isystem $cxxdir \
+    cxx_extra="-nostdinc++ -isystem $cxxdir \
         -isystem $cxxdir/backward -isystem $gccdir"
-    rt_extra="--rtlib=libgcc"
+    rt_extra="--rtlib=libgcc -stdlib=libstdc++"
     link_extra="-lgcc"
     ;;
   openbsd)
