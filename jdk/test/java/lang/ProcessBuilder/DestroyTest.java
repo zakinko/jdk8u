@@ -80,9 +80,11 @@ class UnixTest extends ProcessTest {
         processTrapScript.deleteOnExit();
         FileWriter fstream = new FileWriter(processTrapScript);
         try (BufferedWriter out = new BufferedWriter(fstream)) {
-            out.write("#!/bin/bash\n" +
+            // POSIX sh, found at /bin/sh everywhere; bash is not in /bin on
+            // the BSDs.
+            out.write("#!/bin/sh\n" +
                 "echo \\\"ProcessTrap.sh started: trapping SIGTERM/SIGINT\\\"\n" +
-                "trap bashtrap SIGTERM SIGINT\n" +
+                "trap bashtrap TERM INT\n" +
                 "bashtrap()\n" +
                 "{\n" +
                 "    echo \\\"SIGTERM/SIGINT detected!\\\"\n" +
