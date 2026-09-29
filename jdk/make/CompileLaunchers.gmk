@@ -158,6 +158,14 @@ define SetupLauncher
       $1_MAPFILE :=
     endif
   endif
+  # The launcher mapfiles export environ, __progname and the like, which
+  # glibc's and Solaris' start files put in the executable; on the BSDs they
+  # live in libc.  lld, the linker of FreeBSD and OpenBSD, refuses a version
+  # script that names a symbol the output does not define, so the BSDs link
+  # their launchers without one, as macOS does.
+  ifeq ($(OPENJDK_TARGET_OS), bsd)
+    $1_MAPFILE :=
+  endif
 
   $(call SetupNativeCompilation,BUILD_LAUNCHER_$1, \
       SRC := $(JDK_TOPDIR)/src/share/bin, \
@@ -525,6 +533,10 @@ ifeq ($(USING_BROKEN_SUSE_LD), yes)
   UNPACK_MAPFILE = $(JDK_TOPDIR)/make/mapfiles/libunpack/mapfile-vers-unpack200.anonymous
 else
   UNPACK_MAPFILE = $(JDK_TOPDIR)/make/mapfiles/libunpack/mapfile-vers-unpack200
+endif
+# As for the launchers above: environ and __progname are libc's on the BSDs.
+ifeq ($(OPENJDK_TARGET_OS), bsd)
+  UNPACK_MAPFILE :=
 endif
 
 $(eval $(call SetupNativeCompilation,BUILD_UNPACKEXE, \
