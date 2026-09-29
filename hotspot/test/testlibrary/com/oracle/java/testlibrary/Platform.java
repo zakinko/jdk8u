@@ -152,6 +152,11 @@ public class Platform {
             return canPtraceAttachLinux();
         } else if (isOSX()) {
             return canAttachOSX();
+        } else if (isBSD()) {
+            // The SA's BSD debugger knows x86 and x86_64 alone
+            // (HotSpotAgent.setupDebuggerBsd), and only FreeBSD builds
+            // a working back-end for it; the other BSDs build the stub.
+            return osName.equals("FreeBSD") && (isX86() || isX64());
         } else {
             // Other platforms expected to work:
             return true;
