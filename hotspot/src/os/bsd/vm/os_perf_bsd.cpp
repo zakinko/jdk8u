@@ -561,6 +561,13 @@ int CPUPerformanceInterface::CPUPerformance::context_switch_rate(double* rate) {
   }
 
   jvm_context_switches = (unsigned int)js.swtch;
+#elif defined(__DragonFly__)
+  // getrusage(2) counts this process's own switches, voluntary and not.
+  struct rusage ru;
+  if (getrusage(RUSAGE_SELF, &ru) != 0) {
+    return OS_ERR;
+  }
+  long jvm_context_switches = ru.ru_nvcsw + ru.ru_nivcsw;
 #endif
 
   int result = OS_OK;
