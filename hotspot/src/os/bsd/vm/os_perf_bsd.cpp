@@ -64,7 +64,12 @@
         #define _MACHINE_CPUFUNC_H_
       #endif
     #endif
-    #include <sys/user.h>
+    // OpenBSD's declares struct user alone, which nothing here reads, and
+    // on arm it drags in <machine/frame.h>, whose struct frame collides
+    // with HotSpot's class frame; kinfo_proc is in <sys/sysctl.h> there.
+    #ifndef __OpenBSD__
+      #include <sys/user.h>
+    #endif
   #endif
   #include <sys/sched.h>
   #include <sys/resource.h>
