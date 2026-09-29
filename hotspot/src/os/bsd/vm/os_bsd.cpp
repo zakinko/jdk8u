@@ -1446,7 +1446,9 @@ bool os::dll_address_to_function_name(address addr, char *buf,
   assert(buf != NULL, "sanity check");
 
   Dl_info dlinfo;
+#ifdef __APPLE__
   char localbuf[MACH_MAXSYMLEN];
+#endif
 
   if (dladdr((void*)addr, &dlinfo) != 0) {
     // see if we have a matching symbol
@@ -1465,7 +1467,10 @@ bool os::dll_address_to_function_name(address addr, char *buf,
       }
     }
 
-    // Handle non-dynamic manually:
+#ifdef __APPLE__
+    // Handle non-dynamic manually.  This asks the decoder by load address,
+    // which only the Mach-O one answers; the ELF decoder the other BSDs use
+    // stops the VM on it (ShouldNotReachHere in decoder_elf.hpp).
     if (dlinfo.dli_fbase != NULL &&
         Decoder::decode(addr, localbuf, MACH_MAXSYMLEN, offset,
                         dlinfo.dli_fbase)) {
@@ -1474,6 +1479,7 @@ bool os::dll_address_to_function_name(address addr, char *buf,
       }
       return true;
     }
+#endif
   }
   buf[0] = '\0';
   if (offset != NULL) *offset = -1;
