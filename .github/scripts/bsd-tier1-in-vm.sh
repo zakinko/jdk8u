@@ -93,6 +93,11 @@ if [ -f "$PWD/$repo/test/ProblemList.txt" ]; then
   extra="$extra -exclude:$PWD/$repo/test/ProblemList.txt"
 fi
 
+# The parts may name tests by a pattern, compiler/[a-i]* and the like;
+# expand it in the test root, the directory jtreg reads relative names
+# against.
+tests=`cd "$PWD/$repo/test" && for t in "$@"; do echo $t; done`
+
 set +e
 JT_JAVA="$JDK/bin/java" "$JT/bin/jtreg" \
   -jdk:"$JDK" \
@@ -103,7 +108,7 @@ JT_JAVA="$JDK/bin/java" "$JT/bin/jtreg" \
   -v:fail,error,summary -retain:fail,error \
   -timeoutFactor:4 -conc:3 \
   $extra \
-  "$@"
+  $tests
 echo $? > build/jtreg-exit
 set -e
 
