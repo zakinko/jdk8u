@@ -110,7 +110,7 @@ inline void*    Atomic::add_ptr(intptr_t add_value, volatile void*     dest) {
 
 
 inline jint     Atomic::xchg    (jint     exchange_value, volatile jint*     dest) {
-  intptr_t rv = exchange_value;
+  jint rv = exchange_value;
   __asm__ volatile(
     " swap   [%2],%1\n\t"
     : "=r" (rv)
