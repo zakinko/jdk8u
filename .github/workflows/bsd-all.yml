@@ -94,28 +94,64 @@ jobs:
           path: jtreg/build/images/jtreg
           retention-days: 7
 
+  # Which machines tier1 runs on: those of the seven below whose build
+  # uploaded an image in this run, and none at all once the branch has moved
+  # past this run's commit.  Without it every run queued 56 tier1 jobs --
+  # eight parts for each machine, built or not -- and a run a push had
+  # superseded kept its whole share queued on an account whose runners are
+  # shared, holding up the run that mattered.  A tier1 that has started is
+  # never cancelled; this only keeps the pointless ones from being queued.
+  images:
+    name: images
+    needs: [hotspot]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - name: 'Pick the machines that have an image'
+        id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          all='[
+            {"os":"netbsd",   "arch":"",       "platform":"bsd-x86_64-netbsd",   "release":"10.1", "runner":"ubuntu-24.04"},
+            {"os":"freebsd",  "arch":"",       "platform":"bsd-x86_64-freebsd",  "release":"15.1", "runner":"ubuntu-24.04"},
+            {"os":"openbsd",  "arch":"",       "platform":"bsd-x86_64-openbsd",  "release":"7.9",  "runner":"ubuntu-24.04"},
+            {"os":"dragonfly","arch":"",       "platform":"bsd-x86_64-dragonfly","release":"6.4.2","runner":"ubuntu-24.04"},
+            {"os":"netbsd",   "arch":"aarch64","platform":"bsd-aarch64-netbsd",  "release":"10.1", "runner":"ubuntu-24.04-arm"},
+            {"os":"freebsd",  "arch":"aarch64","platform":"bsd-aarch64-freebsd", "release":"15.1", "runner":"ubuntu-24.04-arm"},
+            {"os":"openbsd",  "arch":"aarch64","platform":"bsd-aarch64-openbsd", "release":"7.9",  "runner":"ubuntu-24.04-arm"}]'
+          head=$(gh api "repos/$GITHUB_REPOSITORY/branches/$GITHUB_REF_NAME" --jq .commit.sha)
+          if [ "$head" != "$GITHUB_SHA" ]; then
+            echo "$GITHUB_REF_NAME is at $head now, past $GITHUB_SHA; no tier1 here"
+            echo 'matrix=[]' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" \
+              --jq '.artifacts[].name' > artifacts.txt
+          echo "images in this run:"; grep '^jdk-' artifacts.txt || true
+          picked=$(echo "$all" | jq -c --rawfile a artifacts.txt \
+              '[ .[] | select(("jdk-" + .platform) as $n | ($a | split("\n") | index($n)) != null) ]')
+          echo "tier1 on: $picked"
+          echo "matrix=$picked" >> "$GITHUB_OUTPUT"
+
   # A guest whose machine differs from the runner's is emulated, so the
-  # aarch64 ones go on an arm64 runner.  Each machine is tested whether or
-  # not the others built: one that did not fails at fetching its image,
-  # and the rest are not held back by it.
+  # aarch64 ones go on an arm64 runner.
   tier1:
     name: tier1
-    needs: [jtreg, hotspot]
-    if: ${{ !cancelled() && needs.jtreg.result == 'success' }}
+    needs: [jtreg, images]
+    if: ${{ !cancelled() && needs.jtreg.result == 'success' && needs.images.outputs.matrix != '[]' && needs.images.outputs.matrix != '' }}
     concurrency:
       group: bsd-tier1-${{ github.ref }}-${{ matrix.platform }}
       cancel-in-progress: false
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - {os: netbsd,    arch: '',        platform: bsd-x86_64-netbsd,     release: '10.1',  runner: ubuntu-24.04}
-          - {os: freebsd,   arch: '',        platform: bsd-x86_64-freebsd,    release: '15.1',  runner: ubuntu-24.04}
-          - {os: openbsd,   arch: '',        platform: bsd-x86_64-openbsd,    release: '7.9',   runner: ubuntu-24.04}
-          - {os: dragonfly, arch: '',        platform: bsd-x86_64-dragonfly,  release: '6.4.2', runner: ubuntu-24.04}
-          - {os: netbsd,    arch: 'aarch64', platform: bsd-aarch64-netbsd,    release: '10.1',  runner: ubuntu-24.04-arm}
-          - {os: freebsd,   arch: 'aarch64', platform: bsd-aarch64-freebsd,   release: '15.1',  runner: ubuntu-24.04-arm}
-          - {os: openbsd,   arch: 'aarch64', platform: bsd-aarch64-openbsd,   release: '7.9',   runner: ubuntu-24.04-arm}
+        include: ${{ fromJSON(needs.images.outputs.matrix) }}
     uses: ./.github/workflows/test-bsd.yml
     with:
       target-os: ${{ matrix.os }}
