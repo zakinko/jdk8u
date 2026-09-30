@@ -66,6 +66,8 @@
 #include <netinet6/in6_var.h>
 #elif defined(__NetBSD__)
 #include <net/if_ether.h>
+#elif defined(__DragonFly__)
+#include <net/ethernet.h>
 #endif
 #include <net/if_dl.h>
 #include <netinet/in_var.h>
