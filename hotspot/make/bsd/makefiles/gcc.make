@@ -299,6 +299,13 @@ ifeq ($(USE_CLANG), true)
   WARNINGS_ARE_ERRORS += -Wno-delete-non-virtual-dtor -Wno-deprecated -Wno-format -Wno-dynamic-class-memaccess
   WARNINGS_ARE_ERRORS += -Wno-empty-body
   WARNINGS_ARE_ERRORS += -Wno-format-nonliteral
+  # The SPARC assembler headers declare inline functions that are defined in
+  # the .inline.hpp files, which not every file including them reaches; gcc,
+  # which SPARC has been built with, does not warn about that, and a call
+  # that really had no definition would still fail to link.
+  ifeq ($(BUILDARCH), sparcv9)
+    WARNINGS_ARE_ERRORS += -Wno-undefined-inline
+  endif
   ifneq "$(shell expr \( $(CC_VER_MAJOR) \>= 6 \))" "0"
     WARNINGS_ARE_ERRORS += -Wno-undefined-bool-conversion -Wno-expansion-to-defined
     WARNINGS_ARE_ERRORS += -Wno-undefined-var-template
