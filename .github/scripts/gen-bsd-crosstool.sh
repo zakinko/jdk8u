@@ -224,9 +224,16 @@ done
 # the name they are invoked by, and the FreeBSD triple has a version in it,
 # so llvm-ar called as x86_64-unknown-freebsd15.1-ar reads the ".1-ar" as a
 # suffix and refuses -- "error: not ranlib, ar, lib or dlltool".
-for tool in ar ranlib strip objcopy nm objdump; do
-  printf '#!/bin/sh\nexec /usr/bin/llvm-%s%s "$@"\n' "$tool" "$llvm_suffix" > "$bindir/$triple-$tool"
-  chmod +x "$bindir/$triple-$tool"
+#
+# 8's config.sub rejects NetBSD's armv7-...-eabihf, so build-bsd.yml gives
+# configure the triple without -eabihf, and configure looks the tools up
+# under that name; without these it takes the host's /usr/bin/strip, which
+# cannot read an ARM object.  Write them under both names.
+for t in "$triple" "${triple%-eabihf}"; do
+  for tool in ar ranlib strip objcopy nm objdump; do
+    printf '#!/bin/sh\nexec /usr/bin/llvm-%s%s "$@"\n' "$tool" "$llvm_suffix" > "$bindir/$t-$tool"
+    chmod +x "$bindir/$t-$tool"
+  done
 done
 
 # Prove the wrapper links before configure spends ten minutes finding out.
