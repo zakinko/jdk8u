@@ -79,7 +79,11 @@
 # include <sys/wait.h>
 # include <pwd.h>
 # include <poll.h>
+#ifndef __OpenBSD__
+// OpenBSD has no <ucontext.h>: its ucontext_t is struct sigcontext, from
+// <signal.h>, as os_bsd_x86.cpp already allows for.
 # include <ucontext.h>
+#endif
 #ifdef __FreeBSD__
 # include <sys/sysctl.h>
 # include <sys/procctl.h>
