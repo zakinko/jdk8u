@@ -789,11 +789,6 @@ static inline void emit3_simm13(CodeBuffer &cbuf, int f30, int f25, int f19, int
   cbuf.insts()->emit_int32(op);
 }
 
-static inline void emit3_simm10(CodeBuffer &cbuf, int f30, int f25, int f19, int f14, int simm10 ) {
-  simm10 &= (1<<10)-1; // Mask to 10 bits
-  emit3_simm13(cbuf,f30,f25,f19,f14,simm10);
-}
-
 #ifdef ASSERT
 // Helper function for VerifyOops in emit_form3_mem_reg
 void verify_oops_warning(const MachNode *n, int ideal_op, int mem_op) {
