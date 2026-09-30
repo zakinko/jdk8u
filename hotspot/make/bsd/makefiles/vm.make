@@ -241,10 +241,19 @@ JVM_OBJ_FILES = $(Obj_Files)
 
 vm_version.o: $(filter-out vm_version.o,$(JVM_OBJ_FILES))
 
+# forte.cpp does not define AsyncGetCallTrace on IA64 or PPC64, and a
+# version script that names a symbol the library lacks is an error to lld,
+# which FreeBSD and OpenBSD link with; leave it out of the mapfile there.
+ifneq ($(filter ia64 ppc64,$(BUILDARCH)),)
+  MAPFILE_UNDEFINED = AsyncGetCallTrace
+endif
+
 mapfile : $(MAPFILE) vm.def mapfile_ext
 	rm -f $@
 	awk '{ if ($$0 ~ "INSERT VTABLE SYMBOLS HERE")	\
                  { system ("cat mapfile_ext"); system ("cat vm.def"); } \
+               else if ("$(MAPFILE_UNDEFINED)" != "" && $$1 == "$(MAPFILE_UNDEFINED);") \
+                 { }					\
                else					\
                  { print $$0 }				\
              }' > $@ < $(MAPFILE)
