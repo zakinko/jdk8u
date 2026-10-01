@@ -55,7 +55,9 @@
 
 // put OS-includes here
 # include <pthread.h>
+#ifndef __NetBSD__
 # include <pthread_np.h>
+#endif
 
 // Bsd/Sparc has rather obscure naming of registers in sigcontext
 // different between 32 and 64 bits
