@@ -4420,7 +4420,7 @@ VS_TOOLSET_SUPPORTED_2022=true
 #CUSTOM_AUTOCONF_INCLUDE
 
 # Do not change or remove the following line, it is needed for consistency checks:
-DATE_WHEN_GENERATED=1790637687
+DATE_WHEN_GENERATED=1790836724
 
 ###############################################################################
 #
@@ -41913,7 +41913,9 @@ $as_echo "$tool_specified" >&6; }
   # FIXME: should this really be per platform, or should it be per toolchain type?
   # strip is not provided by clang or solstudio; so guessing platform makes most sense.
   # FIXME: we should really only export STRIPFLAGS from here, not POST_STRIP_CMD.
-  if test "x$OPENJDK_TARGET_OS" = xlinux; then
+  if test "x$OPENJDK_TARGET_OS" = xlinux || test "x$OPENJDK_TARGET_OS" = xbsd; then
+    # Debug sections only: the serviceability agent finds the VM's
+    # vtables by their symbols, and crash reports name frames with them.
     STRIPFLAGS="-g"
   elif test "x$OPENJDK_TARGET_OS" = xsolaris; then
     STRIPFLAGS="-x"
