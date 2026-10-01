@@ -102,11 +102,11 @@ libdir=${TESTCLASSES}
 is_windows=false
 is_cygwin=false
 case `uname -s` in 
-  SunOS|Linux|AIX)
+  SunOS|Linux|AIX|*BSD|DragonFly)
     xx=`find ${jreloc}/lib -name libdt_socket.so`
     libloc=`dirname ${xx}`
     ;;
-  *BSD | Darwin)
+  Darwin)
     libloc=${jreloc}/lib
     ;;
   Windows*)
