@@ -87,6 +87,20 @@ echo "--- end ---"
 
 if ! "$JDK/bin/java" -version; then
   echo "the image does not start here; no test can run"
+  # Say why, since no test will: what the run-time linker was asked for
+  # and did, and where the launcher stopped.  Each tool is in the base
+  # system of only some of these, hence the || :.
+  echo "--- why ---"
+  ls -l "$JDK"/jre/lib/*/jli 2>&1 || :
+  readelf -d "$JDK/bin/java" 2>&1 | head -30 || :
+  if [ "$os" = OpenBSD ]; then
+    LD_DEBUG=1 "$JDK/bin/java" -version 2>&1 | tail -60 || :
+  fi
+  if command -v gdb >/dev/null 2>&1; then
+    gdb -batch -ex run -ex bt -ex 'info sharedlibrary' \
+        --args "$JDK/bin/java" -version 2>&1 | tail -80 || :
+  fi
+  echo "--- end ---"
   echo 99 > build/jtreg-exit
   exit 0
 fi
