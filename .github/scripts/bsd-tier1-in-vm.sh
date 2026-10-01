@@ -114,6 +114,9 @@ fi
 if [ -f "$PWD/$repo/test/ProblemList.txt" ]; then
   extra="$extra -exclude:$PWD/$repo/test/ProblemList.txt"
 fi
+if [ "$repo" = jdk ]; then
+  extra="$extra -exclude:$PWD/.github/scripts/bsd-headless-problems.txt"
+fi
 
 # The parts may name tests by a pattern, compiler/[a-i]* and the like;
 # expand it in the test root, the directory jtreg reads relative names

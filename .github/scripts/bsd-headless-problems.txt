@@ -1,0 +1,9 @@
+# Tests that cannot run against the image build-bsd.yml makes.
+#
+# The BSDs are cross-built headless (--disable-headful): the sysroots have
+# no X11 libraries to link the AWT against.  A headless-only build leaves
+# out sun.applet (jdk/make/CompileJavaClasses.gmk), so a test that names
+# it does not compile.  bsd-tier1-in-vm.sh passes this list to jtreg next
+# to the repository's own ProblemList, in the same format.
+
+sun/misc/URLClassPath/ClassnameCharTest.java	4957669	generic-all	needs sun.applet, absent from a headless-only image
