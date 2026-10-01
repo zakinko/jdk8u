@@ -84,6 +84,20 @@
 // <signal.h>, as os_bsd_x86.cpp already allows for.
 # include <ucontext.h>
 #endif
+
+// Where the registers are in the signal context: FreeBSD's mcontext, or
+// OpenBSD's struct sigcontext, which is its ucontext_t.
+#ifdef __OpenBSD__
+# define context_pc(uc)   ((uc)->sc_pc)
+# define context_lr(uc)   ((uc)->sc_lr)
+# define context_ctr(uc)  ((uc)->sc_ctr)
+# define context_gpr(uc)  ((uc)->sc_reg)
+#else
+# define context_pc(uc)   ((uc)->uc_mcontext.mc_srr0)
+# define context_lr(uc)   ((uc)->uc_mcontext.mc_lr)
+# define context_ctr(uc)  ((uc)->uc_mcontext.mc_ctr)
+# define context_gpr(uc)  ((uc)->uc_mcontext.mc_gpr)
+#endif
 #ifdef __FreeBSD__
 # include <sys/sysctl.h>
 # include <sys/procctl.h>
@@ -116,12 +130,12 @@ char* os::non_memory_address_word() {
 void os::initialize_thread(Thread *thread) { }
 
 address os::Bsd::ucontext_get_pc(ucontext_t * uc) {
-  guarantee(uc->uc_mcontext.mc_gpr != NULL, "only use ucontext_get_pc in sigaction context");
-  return (address)uc->uc_mcontext.mc_srr0;
+  guarantee(context_gpr(uc) != NULL, "only use ucontext_get_pc in sigaction context");
+  return (address)context_pc(uc);
 }
 
 intptr_t* os::Bsd::ucontext_get_sp(ucontext_t * uc) {
-  return (intptr_t*)uc->uc_mcontext.mc_gpr[1/*REG_SP*/];
+  return (intptr_t*)context_gpr(uc)[1/*REG_SP*/];
 }
 
 intptr_t* os::Bsd::ucontext_get_fp(ucontext_t * uc) {
@@ -232,7 +246,7 @@ JVM_handle_bsd_signal(int sig, siginfo_t* info, void* ucVoid, int abort_if_unrec
   if ((sig == SIGSEGV || sig == SIGBUS) && uc) {
     address const pc = os::Bsd::ucontext_get_pc(uc);
     if (pc && StubRoutines::is_safefetch_fault(pc)) {
-      uc->uc_mcontext.mc_srr0 = (unsigned long)StubRoutines::continuation_for_safefetch_fault(pc);
+      context_pc(uc) = (unsigned long)StubRoutines::continuation_for_safefetch_fault(pc);
       return true;
     }
   }
@@ -461,7 +475,7 @@ JVM_handle_bsd_signal(int sig, siginfo_t* info, void* ucVoid, int abort_if_unrec
           // continue at the next instruction after the faulting read. Returning
           // garbage from this read is ok.
           thread->set_pending_unsafe_access_error();
-          uc->uc_mcontext.mc_srr0 = ((unsigned long)pc) + 4;
+          context_pc(uc) = ((unsigned long)pc) + 4;
           return 1;
         }
       }
@@ -484,7 +498,7 @@ JVM_handle_bsd_signal(int sig, siginfo_t* info, void* ucVoid, int abort_if_unrec
         // continue at the next instruction after the faulting read. Returning
         // garbage from this read is ok.
         thread->set_pending_unsafe_access_error();
-        uc->uc_mcontext.mc_srr0 = ((unsigned long)pc) + 4;
+        context_pc(uc) = ((unsigned long)pc) + 4;
         return 1;
       }
     }
@@ -509,7 +523,7 @@ run_stub:
   if (stub != NULL) {
     // Save all thread context in case we need to restore it.
     if (thread != NULL) thread->set_saved_exception_pc(pc);
-    uc->uc_mcontext.mc_srr0 = (unsigned long)stub;
+    context_pc(uc) = (unsigned long)stub;
     return 1;
   }
 
@@ -678,12 +692,12 @@ void os::print_context(outputStream *st, void *context) {
   ucontext_t* uc = (ucontext_t*)context;
 
   st->print_cr("Registers:");
-  st->print("pc =" INTPTR_FORMAT "  ", uc->uc_mcontext.mc_srr0);
-  st->print("lr =" INTPTR_FORMAT "  ", uc->uc_mcontext.mc_lr);
-  st->print("ctr=" INTPTR_FORMAT "  ", uc->uc_mcontext.mc_ctr);
+  st->print("pc =" INTPTR_FORMAT "  ", context_pc(uc));
+  st->print("lr =" INTPTR_FORMAT "  ", context_lr(uc));
+  st->print("ctr=" INTPTR_FORMAT "  ", context_ctr(uc));
   st->cr();
   for (int i = 0; i < 32; i++) {
-    st->print("r%-2d=" INTPTR_FORMAT "  ", i, uc->uc_mcontext.mc_gpr[i]);
+    st->print("r%-2d=" INTPTR_FORMAT "  ", i, context_gpr(uc)[i]);
     if (i % 3 == 2) st->cr();
   }
   st->cr();
@@ -714,7 +728,7 @@ void os::print_register_info(outputStream *st, void *context) {
   // this is only for the "general purpose" registers
   for (int i = 0; i < 32; i++) {
     st->print("r%-2d=", i);
-    print_location(st, uc->uc_mcontext.mc_gpr[i]);
+    print_location(st, context_gpr(uc)[i]);
   }
   st->cr();
 }
