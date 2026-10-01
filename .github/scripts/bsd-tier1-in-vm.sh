@@ -139,4 +139,15 @@ set -e
 
 echo "--- jtreg exited `cat build/jtreg-exit` ---"
 cat build/report/text/summary.txt 2>/dev/null | grep -v 'Passed\.' || :
+
+# The end of each failing test's .jtr, where its output and the exception
+# are.  The results artifact has the whole file, but the job log is what
+# can always be read.
+grep -v 'Passed\.' build/report/text/summary.txt 2>/dev/null |
+  while read t rest; do
+    jtr="build/work/${t%.*}.jtr"
+    [ -f "$jtr" ] || continue
+    echo "--- $jtr ---"
+    tail -150 "$jtr"
+  done
 exit 0
