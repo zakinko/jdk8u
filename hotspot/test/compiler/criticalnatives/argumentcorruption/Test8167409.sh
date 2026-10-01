@@ -68,13 +68,21 @@ if [ $VM_CPU = "aarch64" ]; then
     exit 0;
 fi
 
+# jni_md.h is in include/linux, include/solaris, or on a BSD in the
+# directory named after the system, include/freebsd and the like.
+case "$OS" in
+  Linux)   JNI_MD_DIR=linux ;;
+  Solaris) JNI_MD_DIR=solaris ;;
+  *)       JNI_MD_DIR=`echo $OS | tr '[:upper:]' '[:lower:]'` ;;
+esac
+
 THIS_DIR=.
 
 cp ${TESTSRC}${FS}*.java ${THIS_DIR}
 ${TESTJAVA}${FS}bin${FS}javac *.java
 
 $cc_cmd ${CFLAGBITS} -fPIC -shared -o libCNCheckLongArgs.so \
-    -I${TESTJAVA}${FS}include -I${TESTJAVA}${FS}include${FS}linux \
+    -I${TESTJAVA}${FS}include -I${TESTJAVA}${FS}include${FS}${JNI_MD_DIR} \
     ${TESTSRC}${FS}libCNCheckLongArgs.c
 
 LD_LIBRARY_PATH=${THIS_DIR}
