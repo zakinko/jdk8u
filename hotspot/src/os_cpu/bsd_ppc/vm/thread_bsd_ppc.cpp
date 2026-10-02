@@ -27,6 +27,15 @@
 #include "runtime/frame.inline.hpp"
 #include "runtime/thread.hpp"
 
+// The general registers in the signal context: FreeBSD's mcontext, or
+// OpenBSD's struct sigcontext, which is its ucontext_t.  os_bsd_ppc.cpp
+// reads the rest.
+#ifdef __OpenBSD__
+# define context_gpr(uc)  ((uc)->sc_reg)
+#else
+# define context_gpr(uc)  ((uc)->uc_mcontext.mc_gpr)
+#endif
+
 bool JavaThread::pd_get_top_frame_for_profiling(frame* fr_addr, void* ucontext, bool isInJava) {
   assert(this->is_Java_thread(), "must be JavaThread");
 
@@ -42,8 +51,8 @@ bool JavaThread::pd_get_top_frame_for_profiling(frame* fr_addr, void* ucontext, 
   // if we were running Java code when SIGPROF came in.
   if (isInJava) {
     ucontext_t* uc = (ucontext_t*) ucontext;
-    frame ret_frame((intptr_t*)uc->uc_mcontext.mc_gpr[1/*REG_SP*/],
-                     (address)uc->uc_mcontext.mc_srr0);
+    frame ret_frame(os::Bsd::ucontext_get_sp(uc),
+                    os::Bsd::ucontext_get_pc(uc));
 
     if (ret_frame.pc() == NULL) {
       // ucontext wasn't useful
@@ -56,7 +65,7 @@ bool JavaThread::pd_get_top_frame_for_profiling(frame* fr_addr, void* ucontext, 
       if (m == NULL || !m->is_valid_method()) return false;
       if (!Metaspace::contains((const void*)m)) return false;
 
-      uint64_t reg_bcp = uc->uc_mcontext.mc_gpr[14/*R14_bcp*/];
+      uint64_t reg_bcp = context_gpr(uc)[14/*R14_bcp*/];
       uint64_t istate_bcp = istate->bcp;
       uint64_t code_start = (uint64_t)(m->code_base());
       uint64_t code_end = (uint64_t)(m->code_base() + m->code_size());
