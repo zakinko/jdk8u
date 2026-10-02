@@ -102,12 +102,35 @@ if ! "$JDK/bin/java" -version; then
   fi
   # HotSpot takes SIGSEGV on purpose while it starts (the CPU feature
   # probe, implicit null checks); pass those to it, so that gdb stops at
-  # the signal that ends the process.
+  # the signal that ends the process.  NetBSD's java has died at exit in
+  # sem_destroy, called by __cxa_finalize for some static object: stop at
+  # every sem_destroy on the way and name the semaphore it is handed (the
+  # first argument, %rdi on x86_64, %x0 on aarch64).
   if command -v gdb >/dev/null 2>&1; then
-    gdb -batch -ex 'handle SIGSEGV nostop noprint pass' \
-        -ex 'handle SIGBUS nostop noprint pass' \
-        -ex run -ex bt -ex 'info threads' -ex 'thread apply all bt 12' \
-        --args "$JDK/bin/java" -version 2>&1 | tail -150 || :
+    case `uname -m` in
+      amd64|x86_64) arg='$rdi' ;;
+      *)            arg='$x0' ;;
+    esac
+    cat > build/why.gdb <<GDB
+handle SIGSEGV nostop noprint pass
+handle SIGBUS nostop noprint pass
+set breakpoint pending on
+break sem_destroy
+commands
+silent
+printf "sem_destroy(%p)\\n", $arg
+info symbol $arg
+x/2gx $arg
+bt 4
+continue
+end
+run
+bt
+info threads
+thread apply all bt 12
+GDB
+    gdb -batch -x build/why.gdb --args "$JDK/bin/java" -version 2>&1 |
+      tail -150 || :
   fi
   echo "--- end ---"
   echo 99 > build/jtreg-exit
