@@ -159,4 +159,13 @@ grep -v 'Passed\.' build/report/text/summary.txt 2>/dev/null |
     echo "--- $jtr ---"
     tail -150 "$jtr"
   done
+
+# And the VM's own account of a crash: the frame and the native stack are
+# at the top of its hs_err file.
+find build/work -name 'hs_err_pid*.log' 2>/dev/null | head -4 |
+  while read f; do
+    echo "--- $f ---"
+    awk '/^Native frames/ { n = 1 } NR <= 25 || n { print } n && /^$/ { n = 0 }' \
+      "$f" | head -70
+  done
 exit 0
