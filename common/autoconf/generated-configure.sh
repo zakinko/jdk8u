@@ -4420,7 +4420,7 @@ VS_TOOLSET_SUPPORTED_2022=true
 #CUSTOM_AUTOCONF_INCLUDE
 
 # Do not change or remove the following line, it is needed for consistency checks:
-DATE_WHEN_GENERATED=1790836724
+DATE_WHEN_GENERATED=1790938778
 
 ###############################################################################
 #
@@ -42606,6 +42606,11 @@ $as_echo "$ac_cv_c_bigendian" >&6; }
       SHARED_LIBRARY_FLAGS='-shared'
       SET_EXECUTABLE_ORIGIN='-Xlinker -rpath -Xlinker \$$$$ORIGIN$1'
       SET_SHARED_LIBRARY_ORIGIN="-Xlinker -z -Xlinker origin $SET_EXECUTABLE_ORIGIN"
+      if test "x$OPENJDK_TARGET_OS" = xbsd; then
+        # DragonFly's run-time linker expands $ORIGIN only in an object
+        # marked DF_ORIGIN, executables included.
+        SET_EXECUTABLE_ORIGIN="-Xlinker -z -Xlinker origin $SET_EXECUTABLE_ORIGIN"
+      fi
       SET_SHARED_LIBRARY_NAME='-Xlinker -soname=$1'
       SET_SHARED_LIBRARY_MAPFILE='-Xlinker -version-script=$1'
     fi

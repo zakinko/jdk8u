@@ -177,6 +177,11 @@ AC_DEFUN_ONCE([FLAGS_SETUP_COMPILER_FLAGS_FOR_LIBS],
       SHARED_LIBRARY_FLAGS='-shared'
       SET_EXECUTABLE_ORIGIN='-Xlinker -rpath -Xlinker \$$$$ORIGIN[$]1'
       SET_SHARED_LIBRARY_ORIGIN="-Xlinker -z -Xlinker origin $SET_EXECUTABLE_ORIGIN"
+      if test "x$OPENJDK_TARGET_OS" = xbsd; then
+        # DragonFly's run-time linker expands $ORIGIN only in an object
+        # marked DF_ORIGIN, executables included.
+        SET_EXECUTABLE_ORIGIN="-Xlinker -z -Xlinker origin $SET_EXECUTABLE_ORIGIN"
+      fi
       SET_SHARED_LIBRARY_NAME='-Xlinker -soname=[$]1'
       SET_SHARED_LIBRARY_MAPFILE='-Xlinker -version-script=[$]1'
     fi
