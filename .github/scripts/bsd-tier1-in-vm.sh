@@ -95,10 +95,19 @@ if ! "$JDK/bin/java" -version; then
   readelf -d "$JDK/bin/java" 2>&1 | head -30 || :
   if [ "$os" = OpenBSD ]; then
     LD_DEBUG=1 "$JDK/bin/java" -version 2>&1 | tail -60 || :
+    # Whether the library is found when ld.so need not expand $ORIGIN.
+    echo "--- with LD_LIBRARY_PATH ---"
+    LD_LIBRARY_PATH=`echo "$JDK"/jre/lib/*/jli` \
+      "$JDK/bin/java" -version 2>&1 | tail -20 || :
   fi
+  # HotSpot takes SIGSEGV on purpose while it starts (the CPU feature
+  # probe, implicit null checks); pass those to it, so that gdb stops at
+  # the signal that ends the process.
   if command -v gdb >/dev/null 2>&1; then
-    gdb -batch -ex run -ex bt -ex 'info sharedlibrary' \
-        --args "$JDK/bin/java" -version 2>&1 | tail -80 || :
+    gdb -batch -ex 'handle SIGSEGV nostop noprint pass' \
+        -ex 'handle SIGBUS nostop noprint pass' \
+        -ex run -ex bt -ex 'info threads' -ex 'thread apply all bt 12' \
+        --args "$JDK/bin/java" -version 2>&1 | tail -150 || :
   fi
   echo "--- end ---"
   echo 99 > build/jtreg-exit
