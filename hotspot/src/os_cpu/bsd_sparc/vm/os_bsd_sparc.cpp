@@ -59,8 +59,20 @@
 # include <pthread_np.h>
 #endif
 
+#ifdef __NetBSD__
+// NetBSD hands a signal handler a ucontext_t, with the registers in
+// uc_mcontext.__gregs.  SIG_REGS is indexed by the CON_ numbers below:
+// %g1..%g7 are __gregs[_REG_G1.._REG_G7] and %o0..%o7 follow them.
+typedef ucontext_t bsd_sparc_context;
+#define SIG_PC(x) ((x)->uc_mcontext.__gregs[_REG_PC])
+#define SIG_NPC(x) ((x)->uc_mcontext.__gregs[_REG_nPC])
+#define SIG_SP(x) ((x)->uc_mcontext.__gregs[_REG_O6])
+#define SIG_REGS(x) ((intptr_t*)&(x)->uc_mcontext.__gregs[_REG_G1 - 1])
+#else
+// OpenBSD's ucontext_t is its struct sigcontext.
 // Bsd/Sparc has rather obscure naming of registers in sigcontext
 // different between 32 and 64 bits
+typedef struct sigcontext bsd_sparc_context;
 #ifdef _LP64
 #define SIG_PC(x) ((x)->sc_pc)
 #define SIG_NPC(x) ((x)->sc_npc)
@@ -69,6 +81,8 @@
 #define SIG_PC(x) ((x)->sc_pc)
 #define SIG_NPC(x) ((x)->sc_npc)
 #define SIG_REGS(x) ((intptr_t*)((x)->sc_sp + STACK_BIAS))
+#endif
+#define SIG_SP(x) ((x)->sc_sp)
 #endif
 
 // those are to reference registers in sigcontext
@@ -91,7 +105,7 @@ enum {
   CON_O7,
 };
 
-static inline void set_cont_address(sigcontext* ctx, address addr) {
+static inline void set_cont_address(bsd_sparc_context* ctx, address addr) {
   SIG_PC(ctx)  = (intptr_t)addr;
   SIG_NPC(ctx) = (intptr_t)(addr+4);
 }
@@ -232,7 +246,7 @@ void os::print_context(outputStream *st, void *context) {
   if (context == NULL) return;
 
   ucontext_t* uc = (ucontext_t*)context;
-  sigcontext* sc = (sigcontext*)context;
+  bsd_sparc_context* sc = (bsd_sparc_context*)context;
   st->print_cr("Registers:");
 
   st->print_cr(" G1=" INTPTR_FORMAT " G2=" INTPTR_FORMAT
@@ -316,7 +330,7 @@ void os::print_register_info(outputStream *st, void *context) {
   if (context == NULL) return;
 
   ucontext_t *uc = (ucontext_t*)context;
-  sigcontext* sc = (sigcontext*)context;
+  bsd_sparc_context* sc = (bsd_sparc_context*)context;
   intptr_t *sp = (intptr_t *)os::Bsd::ucontext_get_sp(uc);
 
   st->print_cr("Register to memory mapping:");
@@ -373,11 +387,11 @@ void os::print_register_info(outputStream *st, void *context) {
 
 
 address os::Bsd::ucontext_get_pc(ucontext_t* uc) {
-  return (address) SIG_PC((sigcontext*)uc);
+  return (address) SIG_PC((bsd_sparc_context*)uc);
 }
 
 intptr_t* os::Bsd::ucontext_get_sp(ucontext_t *uc) {
-  return (intptr_t*)(uc->sc_sp + STACK_BIAS);
+  return (intptr_t*)(SIG_SP((bsd_sparc_context*)uc) + STACK_BIAS);
 }
 
 // not used on Sparc
@@ -388,7 +402,7 @@ intptr_t* os::Bsd::ucontext_get_fp(ucontext_t *uc) {
 
 // Utility functions
 
-inline static bool checkPrefetch(sigcontext* uc, address pc) {
+inline static bool checkPrefetch(bsd_sparc_context* uc, address pc) {
   if (StubRoutines::is_safefetch_fault(pc)) {
     set_cont_address(uc, address(StubRoutines::continuation_for_safefetch_fault(pc)));
     return true;
@@ -396,7 +410,7 @@ inline static bool checkPrefetch(sigcontext* uc, address pc) {
   return false;
 }
 
-inline static bool checkOverflow(sigcontext* uc,
+inline static bool checkOverflow(bsd_sparc_context* uc,
                                  address pc,
                                  address addr,
                                  JavaThread* thread,
@@ -505,7 +519,7 @@ inline static bool checkSerializePage(JavaThread* thread, address addr) {
   return os::is_memory_serialize_page(thread, addr);
 }
 
-inline static bool checkZombie(sigcontext* uc, address* pc, address* stub) {
+inline static bool checkZombie(bsd_sparc_context* uc, address* pc, address* stub) {
   if (nativeInstruction_at(*pc)->is_zombie()) {
     // zombie method (ld [%g0],%o7 instruction)
     *stub = SharedRuntime::get_handle_wrong_method_stub();
@@ -522,7 +536,7 @@ inline static bool checkZombie(sigcontext* uc, address* pc, address* stub) {
   return false;
 }
 
-inline static bool checkICMiss(sigcontext* uc, address* pc, address* stub) {
+inline static bool checkICMiss(bsd_sparc_context* uc, address* pc, address* stub) {
 #ifdef COMPILER2
   if (nativeInstruction_at(*pc)->is_ic_miss_trap()) {
 #ifdef ASSERT
@@ -556,7 +570,7 @@ JVM_handle_bsd_signal(int sig,
   // but Bsd porting layer uses ucontext_t, so to minimize code change
   // we cast as needed
   ucontext_t* ucFake = (ucontext_t*) ucVoid;
-  sigcontext* uc = (sigcontext*)ucVoid;
+  bsd_sparc_context* uc = (bsd_sparc_context*)ucVoid;
 
   Thread* t = ThreadLocalStorage::get_thread_slow();
 
