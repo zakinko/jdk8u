@@ -91,14 +91,21 @@ if ! "$JDK/bin/java" -version; then
   # and did, and where the launcher stopped.  Each tool is in the base
   # system of only some of these, hence the || :.
   echo "--- why ---"
+  # Each probe below runs the JVM again, emulated on aarch64, and a gdb
+  # session there has sat for the job's whole six hours; give each ten
+  # minutes where the system has timeout(1).
+  limit=
+  if command -v timeout >/dev/null 2>&1; then
+    limit="timeout 600"
+  fi
   ls -l "$JDK"/jre/lib/*/jli 2>&1 || :
   readelf -d "$JDK/bin/java" 2>&1 | head -30 || :
   if [ "$os" = OpenBSD ]; then
-    LD_DEBUG=1 "$JDK/bin/java" -version 2>&1 | tail -60 || :
+    LD_DEBUG=1 $limit "$JDK/bin/java" -version 2>&1 | tail -60 || :
     # Whether the library is found when ld.so need not expand $ORIGIN.
     echo "--- with LD_LIBRARY_PATH ---"
     LD_LIBRARY_PATH=`echo "$JDK"/jre/lib/*/jli` \
-      "$JDK/bin/java" -version 2>&1 | tail -20 || :
+      $limit "$JDK/bin/java" -version 2>&1 | tail -20 || :
   fi
   # HotSpot takes SIGSEGV on purpose while it starts (the CPU feature
   # probe, implicit null checks); pass those to it, so that gdb stops at
@@ -129,8 +136,10 @@ bt
 info threads
 thread apply all bt 12
 GDB
-    gdb -batch -x build/why.gdb --args "$JDK/bin/java" -version 2>&1 |
+    $limit gdb -batch -x build/why.gdb --args "$JDK/bin/java" -version 2>&1 |
       tail -150 || :
+    # A traced java can outlive a gdb that timeout stopped.
+    pkill -9 -f "$JDK/bin/java" 2>/dev/null || :
   fi
   echo "--- end ---"
   echo 99 > build/jtreg-exit
