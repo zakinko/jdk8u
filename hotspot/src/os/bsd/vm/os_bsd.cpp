@@ -1451,6 +1451,17 @@ bool os::dll_address_to_function_name(address addr, char *buf,
 #endif
 
   if (dladdr((void*)addr, &dlinfo) != 0) {
+#ifndef __APPLE__
+    // The BSDs' dladdr names the nearest dynamic symbol below addr however
+    // far below it is, where glibc's gives none outside a symbol's extent,
+    // and libjvm exports little more than its JVM_ entry points.  Ask the
+    // file's own symbol table first, as Linux in effect does.
+    if (dlinfo.dli_fname != NULL && dlinfo.dli_fbase != NULL &&
+        Decoder::decode((address)(addr - (address)dlinfo.dli_fbase),
+                        buf, buflen, offset, dlinfo.dli_fname)) {
+      return true;
+    }
+#endif
     // see if we have a matching symbol
     if (dlinfo.dli_saddr != NULL && dlinfo.dli_sname != NULL) {
       if (!Decoder::demangle(dlinfo.dli_sname, buf, buflen)) {
