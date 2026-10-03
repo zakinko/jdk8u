@@ -89,7 +89,23 @@ uname -a
 ldd "$JDK/bin/java" 2>&1 | head -12
 echo "--- end ---"
 
-if ! "$JDK/bin/java" -version; then
+# jtreg's own script asks the JDK for java.version by running a class out
+# of jtreg.jar, and discards everything else the JVM says; ask the same
+# question first, aloud.  An image that prints its version but cannot
+# run that class gets no further than jtreg would.
+started=no
+probe=-version
+if "$JDK/bin/java" -version; then
+  probe="-classpath $JT/lib/jtreg.jar com.sun.javatest.regtest.agent.GetSystemProperty java.version"
+  "$JDK/bin/java" -classpath "$JT/lib/jtreg.jar" \
+    com.sun.javatest.regtest.agent.GetSystemProperty java.version \
+    > build/getprop.out 2>&1 || :
+  cat build/getprop.out
+  if grep -q 'java.version=' build/getprop.out; then
+    started=yes
+  fi
+fi
+if [ $started = no ]; then
   echo "the image does not start here; no test can run"
   # Say why, since no test will: what the run-time linker was asked for
   # and did, and where the launcher stopped.  Each tool is in the base
@@ -105,11 +121,11 @@ if ! "$JDK/bin/java" -version; then
   ls -l "$JDK"/jre/lib/*/jli 2>&1 || :
   readelf -d "$JDK/bin/java" 2>&1 | head -30 || :
   if [ "$os" = OpenBSD ]; then
-    LD_DEBUG=1 $limit "$JDK/bin/java" -version 2>&1 | tail -60 || :
+    LD_DEBUG=1 $limit "$JDK/bin/java" $probe 2>&1 | tail -60 || :
     # Whether the library is found when ld.so need not expand $ORIGIN.
     echo "--- with LD_LIBRARY_PATH ---"
     LD_LIBRARY_PATH=`echo "$JDK"/jre/lib/*/jli` \
-      $limit "$JDK/bin/java" -version 2>&1 | tail -20 || :
+      $limit "$JDK/bin/java" $probe 2>&1 | tail -20 || :
   fi
   # HotSpot takes SIGSEGV on purpose while it starts (the CPU feature
   # probe, implicit null checks); pass those to it, so that gdb stops at
@@ -140,11 +156,18 @@ bt
 info threads
 thread apply all bt 12
 GDB
-    $limit gdb -batch -x build/why.gdb --args "$JDK/bin/java" -version 2>&1 |
+    $limit gdb -batch -x build/why.gdb --args "$JDK/bin/java" $probe 2>&1 |
       tail -150 || :
     # A traced java can outlive a gdb that timeout stopped.
     pkill -9 -f "$JDK/bin/java" 2>/dev/null || :
   fi
+  # A VM that crashed in the probe left its report here.
+  for f in hs_err_pid*.log; do
+    [ -f "$f" ] || continue
+    echo "--- $f ---"
+    awk '/^Native frames/ { n = 1 } NR <= 25 || n { print } n && /^$/ { n = 0 }' \
+      "$f" | head -70
+  done
   echo "--- end ---"
   echo 99 > build/jtreg-exit
   exit 0
