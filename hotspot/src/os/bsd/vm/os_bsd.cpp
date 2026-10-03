@@ -2126,10 +2126,10 @@ typedef sem_t os_semaphore_t;
 #define SEM_DESTROY(sem)        sem_destroy(&sem)
 #endif
 
-class Semaphore : public StackObj {
+class BsdSemaphore : public StackObj {
   public:
-    Semaphore();
-    ~Semaphore();
+    BsdSemaphore();
+    ~BsdSemaphore();
     void signal();
     void wait();
     bool trywait();
@@ -2139,34 +2139,34 @@ class Semaphore : public StackObj {
     os_semaphore_t _semaphore;
 };
 
-Semaphore::Semaphore() {
+BsdSemaphore::BsdSemaphore() {
   SEM_INIT(_semaphore, 0);
 }
 
-Semaphore::~Semaphore() {
+BsdSemaphore::~BsdSemaphore() {
   SEM_DESTROY(_semaphore);
 }
 
-void Semaphore::signal() {
+void BsdSemaphore::signal() {
   SEM_POST(_semaphore);
 }
 
-void Semaphore::wait() {
+void BsdSemaphore::wait() {
   SEM_WAIT(_semaphore);
 }
 
-jlong Semaphore::currenttime() const {
+jlong BsdSemaphore::currenttime() const {
     struct timeval tv;
     gettimeofday(&tv, NULL);
     return (tv.tv_sec * NANOSECS_PER_SEC) + (tv.tv_usec * 1000);
 }
 
 #ifdef __APPLE__
-bool Semaphore::trywait() {
+bool BsdSemaphore::trywait() {
   return timedwait(0, 0);
 }
 
-bool Semaphore::timedwait(unsigned int sec, int nsec) {
+bool BsdSemaphore::timedwait(unsigned int sec, int nsec) {
   kern_return_t kr = KERN_ABORTED;
   mach_timespec_t waitspec;
   waitspec.tv_sec = sec;
@@ -2198,11 +2198,11 @@ bool Semaphore::timedwait(unsigned int sec, int nsec) {
 
 #else
 
-bool Semaphore::trywait() {
+bool BsdSemaphore::trywait() {
   return sem_trywait(&_semaphore) == 0;
 }
 
-bool Semaphore::timedwait(unsigned int sec, int nsec) {
+bool BsdSemaphore::timedwait(unsigned int sec, int nsec) {
   struct timespec ts;
   unpackTime(&ts, false, (sec * NANOSECS_PER_SEC) + nsec);
 
@@ -2224,16 +2224,16 @@ bool Semaphore::timedwait(unsigned int sec, int nsec) {
 
 static os_semaphore_t sig_sem;
 // Never destroyed.  At process exit __cxa_finalize runs this file's static
-// destructors, and ~Semaphore reaches sem_destroy in libpthread, which
+// destructors, and ~BsdSemaphore reaches sem_destroy in libpthread, which
 // faults there; the VM's own signal handler then catches that SIGSEGV and
 // tries to print a report with a vtable that is already gone, so the
 // process dies with "pure virtual method called" instead of exiting.
 // Nothing needs releasing at exit, so place it and leave it.
 static union {
-  char storage[sizeof(Semaphore)];
+  char storage[sizeof(BsdSemaphore)];
   jlong align;
 } sr_semaphore_storage;
-static Semaphore& sr_semaphore = *::new (&sr_semaphore_storage) Semaphore();
+static BsdSemaphore& sr_semaphore = *::new (&sr_semaphore_storage) BsdSemaphore();
 
 void os::signal_init_pd() {
   // Initialize signal structures
