@@ -61,9 +61,13 @@ if [ "$os" = NetBSD ]; then
 fi
 
 if [ "$os" = OpenBSD ]; then
-  # The JVM reserves its heap and code cache up front, well past the
-  # default data size limit of a login class.
+  # OpenBSD counts anonymous mappings against the data size limit, and
+  # the JVM reserves its heap (a quarter of memory), class space and
+  # code cache up front, past the hard limit of root's login class.  The
+  # tests run as root, which may raise the hard limit too.
+  ulimit -Hd unlimited 2>/dev/null || :
   ulimit -Sd `ulimit -Hd`
+  echo "data size limit: `ulimit -Sd`"
 fi
 
 # JDI tests have the debuggee listen on the machine's own name
