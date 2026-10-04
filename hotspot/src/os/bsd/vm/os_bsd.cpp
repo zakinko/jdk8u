@@ -2770,6 +2770,16 @@ char* os::pd_attempt_reserve_memory_at(size_t bytes, char* requested_addr) {
   // in one of the methods further up the call chain.  See bug 5044738.
   assert(bytes % os::vm_page_size() == 0, "reserving unexpected size block");
 
+  // Linux maps nothing below vm.mmap_min_addr, 64K by default, so the VM
+  // has only ever been run with what it reserved above that.  The BSDs
+  // map from the second page on, and a CDS archive dumped at
+  // SharedBaseAddress=1, which is 0x1000, crashes the VM that maps it
+  // there.  Keep requests out of the first 64K, as Linux does; the
+  // callers then fall back as they do there.
+  if (requested_addr != NULL && (uintptr_t)requested_addr < 64 * K) {
+    return NULL;
+  }
+
   // Repeatedly allocate blocks until the block is allocated at the
   // right spot. Give up after max_tries. Note that reserve_memory() will
   // automatically update _highest_vm_reserved_address if the call is
