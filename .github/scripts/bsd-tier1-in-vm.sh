@@ -216,7 +216,10 @@ grep -v 'Passed\.' build/report/text/summary.txt 2>/dev/null |
     jtr="build/work/${t%.*}.jtr"
     [ -f "$jtr" ] || continue
     echo "--- $jtr ---"
-    tail -150 "$jtr"
+    # Without the rerun sections, which are command lines and long ones,
+    # so that a child VM's output still fits.
+    awk '/^----------/ { skip = /^----------rerun/ } !skip' "$jtr" |
+      tail -300
   done
 
 # And the VM's own account of a crash: the frame and the native stack are
