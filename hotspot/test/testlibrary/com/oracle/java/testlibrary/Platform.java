@@ -68,7 +68,7 @@ public class Platform {
     }
 
     public static boolean isBSD() {
-        return osName.toLowerCase().endsWith("bsd");
+        return osName.toLowerCase().endsWith("bsd") || osName.equals("DragonFly");
     }
 
     public static boolean isLinux() {
