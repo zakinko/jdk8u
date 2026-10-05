@@ -4420,7 +4420,7 @@ VS_TOOLSET_SUPPORTED_2022=true
 #CUSTOM_AUTOCONF_INCLUDE
 
 # Do not change or remove the following line, it is needed for consistency checks:
-DATE_WHEN_GENERATED=1790938778
+DATE_WHEN_GENERATED=1791237402
 
 ###############################################################################
 #
@@ -41395,8 +41395,9 @@ fi
 
 
 
-  # On OpenBSD check to see if ld requires -z wxneeded or -z nobtcfi
-  if test "`uname -s`" = "OpenBSD"; then
+  # On OpenBSD check to see if ld requires -z wxneeded or -z nobtcfi.
+  # The JDK is for the target, which need not be the machine building it.
+  if test "x$OPENJDK_TARGET_OS_VENDOR" = xopenbsd; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking if ld requires -z wxneeded" >&5
 $as_echo_n "checking if ld requires -z wxneeded... " >&6; }
     PUSHED_LDFLAGS="$LDFLAGS"

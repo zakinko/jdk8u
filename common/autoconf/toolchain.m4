@@ -844,8 +844,9 @@ AC_DEFUN_ONCE([TOOLCHAIN_MISC_CHECKS],
 
   AC_SUBST(PACKAGE_PATH)
 
-  # On OpenBSD check to see if ld requires -z wxneeded or -z nobtcfi
-  if test "`uname -s`" = "OpenBSD"; then
+  # On OpenBSD check to see if ld requires -z wxneeded or -z nobtcfi.
+  # The JDK is for the target, which need not be the machine building it.
+  if test "x$OPENJDK_TARGET_OS_VENDOR" = xopenbsd; then
     AC_MSG_CHECKING([if ld requires -z wxneeded])
     PUSHED_LDFLAGS="$LDFLAGS"
     LDFLAGS="$LDFLAGS -Wl,-z,wxneeded"
