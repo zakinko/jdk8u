@@ -83,7 +83,7 @@ public final class FontUtilities {
 
                 isLinux = osName.startsWith("Linux");
 
-                isBSD = osName.endsWith("BSD");
+                isBSD = (osName.endsWith("BSD") || osName.equals("DragonFly"));
 
                 isMacOSX = osName.contains("OS X"); // TODO: MacOSX
                 if (isMacOSX) {

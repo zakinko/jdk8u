@@ -61,7 +61,7 @@ public class DefaultFileSystemProvider {
             return createProvider("sun.nio.fs.SolarisFileSystemProvider");
         if (osname.equals("Linux"))
             return createProvider("sun.nio.fs.LinuxFileSystemProvider");
-        if (osname.endsWith("BSD"))
+        if (osname.endsWith("BSD") || osname.equals("DragonFly"))
             return createProvider("sun.nio.fs.BsdFileSystemProvider");
         if (osname.contains("OS X"))
             return createProvider("sun.nio.fs.MacOSXFileSystemProvider");

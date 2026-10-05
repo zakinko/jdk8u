@@ -102,7 +102,7 @@ public class OSInfo {
                 return SOLARIS;
             }
 
-            if (osName.endsWith("BSD")) {
+            if (osName.endsWith("BSD") || osName.equals("DragonFly")) {
                 return BSD;
             }
 

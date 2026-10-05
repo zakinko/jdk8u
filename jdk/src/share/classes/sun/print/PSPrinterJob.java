@@ -1588,7 +1588,7 @@ public class PSPrinterJob extends RasterPrinterJob {
         }
 
        String osname = System.getProperty("os.name");
-       if (osname.equals("Linux") || osname.endsWith("BSD") || osname.contains("OS X")) {
+       if (osname.equals("Linux") || osname.endsWith("BSD") || osname.equals("DragonFly") || osname.contains("OS X")) {
             String lprPath = "/usr/bin/lpr";
             if (osname.equals("FreeBSD")) {
                 final PrintService pservice = getPrintService();

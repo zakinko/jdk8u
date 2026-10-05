@@ -90,7 +90,7 @@ public final class SunNativeProvider extends Provider {
                                     "libgssapi_krb5.so",
                                     "libgssapi_krb5.so.2",
                                 };
-                            } else if (osname.endsWith("BSD")) {
+                            } else if (osname.endsWith("BSD") || osname.equals("DragonFly")) {
                                 gssLibs = new String[]{
                                     "libgssapi.so",
                                     "libgssapi_krb5.so",
