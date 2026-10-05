@@ -171,7 +171,14 @@ sa_handler_t sigset(int sig, sa_handler_t disp) {
 static int call_os_sigaction(int sig, const struct sigaction  *act,
                              struct sigaction *oact) {
   if (os_sigaction == NULL) {
+#ifdef __NetBSD__
+    // NetBSD's <signal.h> renames sigaction to __sigaction_siginfo, which
+    // is also the name the definition below is given; the plain name in
+    // libc is the compatibility entry point, which takes the old struct.
+    os_sigaction = (sigaction_t)dlsym(RTLD_NEXT, "__sigaction_siginfo");
+#else
     os_sigaction = (sigaction_t)dlsym(RTLD_NEXT, "sigaction");
+#endif
     if (os_sigaction == NULL) {
       printf("%s\n", dlerror());
       exit(0);
