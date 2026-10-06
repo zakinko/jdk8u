@@ -48,7 +48,7 @@ case "$OS" in
   Linux )
     FILESEP="/"
     ;;
-  *BSD | Darwin )
+  *BSD | DragonFly | Darwin )
     FILESEP="/"
     ;;
   AIX )

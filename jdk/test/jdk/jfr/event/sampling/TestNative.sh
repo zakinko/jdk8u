@@ -4,7 +4,7 @@ set -ex
 
 OS=`uname -s`
 case OS in
-    Linux | Darwin | *BSD)
+    Linux | Darwin | *BSD | DragonFly)
         ;;
     *)
         echo "This is a Linux/MacOSX only test"

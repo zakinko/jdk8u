@@ -54,7 +54,7 @@ public class Platform {
     }
 
     public static boolean isBSD() {
-        return isOs("bsd");
+        return isOs("bsd") || isOs("dragonfly");
     }
 
     private static boolean isOs(String osname) {

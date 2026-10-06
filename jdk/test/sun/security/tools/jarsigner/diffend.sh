@@ -47,7 +47,7 @@ case "$OS" in
     FS="/"
     CP="${FS}bin${FS}cp -f"
     ;;
-  *BSD )
+  *BSD | DragonFly )
     NULL=/dev/null
     PS=":"
     FS="/"

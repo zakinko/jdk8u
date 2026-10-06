@@ -50,7 +50,7 @@ fi
 
 OS=`uname -s`
 case "$OS" in
-  SunOS | Linux | *BSD | Darwin | CYGWIN* )
+  SunOS | Linux | *BSD | DragonFly | Darwin | CYGWIN* )
     FS="/"
     ;;
   Windows_* )

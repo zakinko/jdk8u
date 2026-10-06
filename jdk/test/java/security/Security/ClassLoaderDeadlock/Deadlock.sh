@@ -42,7 +42,7 @@ case "$OS" in
     PATHSEP=":"
     FILESEP="/"
     ;;
-  *BSD | Darwin )
+  *BSD | DragonFly | Darwin )
     PATHSEP=":"
     FILESEP="/"
     ;;

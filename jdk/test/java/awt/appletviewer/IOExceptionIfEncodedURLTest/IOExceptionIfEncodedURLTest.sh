@@ -120,7 +120,7 @@ case "$OS" in
       TMP="/tmp"
       ;;
 
-   *BSD )
+   *BSD | DragonFly )
       VAR="A different value for BSD"
       DEFAULT_JDK=/usr/local/openjdk8
       FILESEP="/"

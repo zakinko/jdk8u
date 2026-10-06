@@ -59,7 +59,7 @@ case "$OS" in
     PS=":"
     FS="/"
     ;;
-  *BSD | Darwin )
+  *BSD | DragonFly | Darwin )
     PS=":"
     FS="/"
     ;;

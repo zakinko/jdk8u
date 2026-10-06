@@ -43,7 +43,7 @@ case "$OS" in
     FS="/"
     RM="/bin/rm -f"
     ;;
-  *BSD | Darwin )
+  *BSD | DragonFly | Darwin )
     PS=":"
     FS="/"
     RM="/bin/rm -f"

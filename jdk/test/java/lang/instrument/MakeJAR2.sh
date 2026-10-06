@@ -55,7 +55,7 @@ fi
 
 OS=`uname -s`
 case "$OS" in
-   SunOS | Linux | *BSD | Darwin )
+   SunOS | Linux | *BSD | DragonFly | Darwin )
       PATHSEP=":"
       ;;
 

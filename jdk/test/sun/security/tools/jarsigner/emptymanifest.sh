@@ -39,7 +39,7 @@ case "$OS" in
   Windows_* )
     FS="\\"
     ;;
-  *BSD )
+  *BSD | DragonFly )
     PS=":"
     FS="/"
     PATH="${PATH}${PS}${FS}usr${FS}local${FS}bin"

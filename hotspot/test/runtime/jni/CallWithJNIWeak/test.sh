@@ -50,7 +50,7 @@ case "$OS" in
         exit 0;
     fi
     ;;
-  Solaris | *BSD)
+  Solaris | *BSD | DragonFly)
     cc_cmd=`which cc`
     if [ "x$cc_cmd" = "x" ]; then
         echo "WARNING: cc not found. Cannot execute test." 2>&1

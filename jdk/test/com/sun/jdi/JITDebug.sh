@@ -63,7 +63,7 @@ pass()
 OS=`uname -s`
 export TRANSPORT_METHOD
 case "$OS" in
-   SunOS | Linux | *BSD | Darwin | AIX )
+   SunOS | Linux | *BSD | DragonFly | Darwin | AIX )
       PATHSEP=":"
       TRANSPORT_METHOD=dt_socket
       ;;

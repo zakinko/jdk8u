@@ -59,7 +59,7 @@ pass()
 # Checking for proper OS
 OS=`uname -s`
 case "$OS" in
-   AIX | SunOS | Linux | Darwin | CYGWIN* | *BSD )
+   AIX | SunOS | Linux | Darwin | CYGWIN* | *BSD | DragonFly )
       FILESEP="/"
       ;;
     
@@ -144,7 +144,7 @@ case "$OS" in
     fi
     ;;
 
-  AIX | SunOS | Linux | *BSD )
+  AIX | SunOS | Linux | *BSD | DragonFly )
     ${TESTJAVA}/bin/java -Djava.awt.headless=true \
                          -Dawt.toolkit=sun.awt.X11.XToolkit \
                          TestWrapped sun.awt.X11.XToolkit

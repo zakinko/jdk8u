@@ -113,7 +113,7 @@ case "$OS" in
     OS="Linux"
     isLinux=true
     ;;
-  *BSD )
+  *BSD | DragonFly )
     OS="BSD"
     isBSD=true
     ;;

@@ -48,7 +48,7 @@ JAR=$COMPILEJAVA/bin/jar
 
 DIR=`pwd`
 case `uname` in
-  SunOS | Linux | *BSD | Darwin | AIX ) CPS=':' ;;
+  SunOS | Linux | *BSD | DragonFly | Darwin | AIX ) CPS=':' ;;
   Windows* )      CPS=';' ;;
   CYGWIN*  )
     DIR=`/usr/bin/cygpath -a -s -m $DIR`

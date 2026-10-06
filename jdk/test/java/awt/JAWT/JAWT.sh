@@ -63,7 +63,7 @@ case "$OS" in
 	MAKE="make"
 	LD_LIBRARY_PATH="."
     ;;
-  *BSD )
+  *BSD | DragonFly )
     NULL=/dev/null
     PS=":"
     FS="/"
