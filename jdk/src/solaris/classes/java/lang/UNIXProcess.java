@@ -173,6 +173,14 @@ final class UNIXProcess extends Process {
     private static final LaunchMechanism launchMechanism = platform.launchMechanism();
     private static final byte[] helperpath = toCString(platform.helperPath());
 
+    // NetBSD's close(2) makes a read blocked on the same descriptor in
+    // another thread fail with EBADF, where Linux and the other BSDs let
+    // it go on to the end of file the killed process leaves.
+    private static final boolean closeAbortsPendingReads =
+        AccessController.doPrivileged(
+            (PrivilegedAction<String>) () -> System.getProperty("os.name")
+        ).equals("NetBSD");
+
     private static byte[] toCString(String s) {
         if (s == null)
             return null;
@@ -447,6 +455,13 @@ final class UNIXProcess extends Process {
                         destroyProcess(pid, force);
                 }
                 try { stdin.close();  } catch (IOException ignored) {}
+                if (closeAbortsPendingReads) {
+                    // A read pending on stdout or stderr is to see the
+                    // end of file, not an IOException: leave the two to
+                    // processExited(), which drains and closes them once
+                    // the process is gone, as Solaris defers its close.
+                    break;
+                }
                 try { stdout.close(); } catch (IOException ignored) {}
                 try { stderr.close(); } catch (IOException ignored) {}
                 break;
