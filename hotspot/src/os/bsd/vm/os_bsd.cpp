@@ -1750,6 +1750,27 @@ void* os::dll_lookup(void* handle, const char* name) {
   return dlsym(handle, name);
 }
 
+#if !defined(RTLD_DI_LINKMAP) && defined(__OpenBSD__)
+// OpenBSD's dlinfo() has no RTLD_DI_LINKMAP; ask dl_iterate_phdr() for the
+// objects instead, in the order the run-time linker loaded them.
+struct loaded_modules_walk {
+  os::LoadedModulesCallbackFunc callback;
+  void* param;
+  outputStream* st;
+};
+
+static int walk_loaded_module(struct dl_phdr_info* info, size_t size, void* data) {
+  loaded_modules_walk* walk = (loaded_modules_walk*) data;
+  const char* name = info->dlpi_name != NULL ? info->dlpi_name : "";
+  if (walk->st != NULL) {
+    walk->st->print_cr(PTR_FORMAT " \t%s", (intptr_t) info->dlpi_addr, name);
+    return 0;
+  }
+  // Value for top_address is returned as 0 since we don't have any information about module size
+  return walk->callback(name, (address) info->dlpi_addr, (address) 0, walk->param) ? 1 : 0;
+}
+#endif
+
 void os::print_dll_info(outputStream *st) {
   st->print_cr("Dynamic libraries:");
 #ifdef RTLD_DI_LINKMAP
@@ -1788,6 +1809,9 @@ void os::print_dll_info(outputStream *st) {
     st->print_cr(PTR_FORMAT " \t%s", _dyld_get_image_header(i),
         _dyld_get_image_name(i));
   }
+#elif defined(__OpenBSD__)
+  loaded_modules_walk walk = { NULL, NULL, st };
+  dl_iterate_phdr(walk_loaded_module, &walk);
 #else
   st->print_cr("Error: Cannot print dynamic libraries.");
 #endif
@@ -1833,6 +1857,11 @@ int os::get_loaded_modules_info(os::LoadedModulesCallbackFunc callback, void *pa
     if (callback(_dyld_get_image_name(i), (address)_dyld_get_image_header(i), (address)0, param)) {
       return 1;
     }
+  }
+#elif defined(__OpenBSD__)
+  loaded_modules_walk walk = { callback, param, NULL };
+  if (dl_iterate_phdr(walk_loaded_module, &walk) != 0) {
+    return 1;
   }
 #else
   return 1;
