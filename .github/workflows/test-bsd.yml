@@ -76,16 +76,18 @@ jobs:
     runs-on: ${{ inputs.runner }}
 
     # hotspot_tier1 is :jdk, which for a full JDK is every directory
-    # below; compiler is split three ways by the first character of its
-    # subdirectories (168, 151 and 221 tests), which bsd-tier1-in-vm.sh
-    # expands in the test root.  An aarch64 guest runs emulated, with no
+    # below; compiler is split four ways by the first character of its
+    # subdirectories -- a-h 62 tests, i 106 (99 of them intrinsics, which
+    # alone take hours on an emulated aarch64), j-z and A-Z 151, the
+    # numbered ones 221 -- which bsd-tier1-in-vm.sh expands in the test
+    # root.  An aarch64 guest runs emulated, with no
     # KVM on the arm64 runner, so there only the parts that depend on the
     # CPU run -- the JIT, the collectors and the runtime; the library and
     # langtools parts measure the same Java code on x86_64.
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.parts == 'hotspot' && '[{"name":"hotspot/tier1 compiler a-i","dir":"hotspot","tests":"compiler/[a-i]*","slug":"hs-compiler1"},{"name":"hotspot/tier1 compiler j-z","dir":"hotspot","tests":"compiler/[j-z]* compiler/[A-Z]*","slug":"hs-compiler2"},{"name":"hotspot/tier1 compiler bugs","dir":"hotspot","tests":"compiler/[0-9]*","slug":"hs-compiler3"},{"name":"hotspot/tier1 gc","dir":"hotspot","tests":"gc","slug":"hs-gc"},{"name":"hotspot/tier1 runtime","dir":"hotspot","tests":"runtime","slug":"hs-runtime"}]' || '[{"name":"jdk/tier1 lang","dir":"jdk","tests":":jdk_lang","slug":"jdk-lang"},{"name":"jdk/tier1 util","dir":"jdk","tests":":jdk_util","slug":"jdk-util"},{"name":"jdk/tier1 math jdi","dir":"jdk","tests":":jdk_math :jdk_jdi","slug":"jdk-math-jdi"},{"name":"langtools/tier1","dir":"langtools","tests":":langtools_tier1","slug":"langtools"},{"name":"hotspot/tier1 other","dir":"hotspot","tests":"serviceability sanity testlibrary_tests","slug":"hs-other"},{"name":"hotspot/tier1 compiler a-i","dir":"hotspot","tests":"compiler/[a-i]*","slug":"hs-compiler1"},{"name":"hotspot/tier1 compiler j-z","dir":"hotspot","tests":"compiler/[j-z]* compiler/[A-Z]*","slug":"hs-compiler2"},{"name":"hotspot/tier1 compiler bugs","dir":"hotspot","tests":"compiler/[0-9]*","slug":"hs-compiler3"},{"name":"hotspot/tier1 gc","dir":"hotspot","tests":"gc","slug":"hs-gc"},{"name":"hotspot/tier1 runtime","dir":"hotspot","tests":"runtime","slug":"hs-runtime"}]') }}
+        include: ${{ fromJSON(inputs.parts == 'hotspot' && '[{"name":"hotspot/tier1 compiler a-h","dir":"hotspot","tests":"compiler/[a-h]*","slug":"hs-compiler1"},{"name":"hotspot/tier1 compiler i","dir":"hotspot","tests":"compiler/i*","slug":"hs-compiler4"},{"name":"hotspot/tier1 compiler j-z","dir":"hotspot","tests":"compiler/[j-z]* compiler/[A-Z]*","slug":"hs-compiler2"},{"name":"hotspot/tier1 compiler bugs","dir":"hotspot","tests":"compiler/[0-9]*","slug":"hs-compiler3"},{"name":"hotspot/tier1 gc","dir":"hotspot","tests":"gc","slug":"hs-gc"},{"name":"hotspot/tier1 runtime","dir":"hotspot","tests":"runtime","slug":"hs-runtime"}]' || '[{"name":"jdk/tier1 lang","dir":"jdk","tests":":jdk_lang","slug":"jdk-lang"},{"name":"jdk/tier1 util","dir":"jdk","tests":":jdk_util","slug":"jdk-util"},{"name":"jdk/tier1 math jdi","dir":"jdk","tests":":jdk_math :jdk_jdi","slug":"jdk-math-jdi"},{"name":"langtools/tier1","dir":"langtools","tests":":langtools_tier1","slug":"langtools"},{"name":"hotspot/tier1 other","dir":"hotspot","tests":"serviceability sanity testlibrary_tests","slug":"hs-other"},{"name":"hotspot/tier1 compiler a-h","dir":"hotspot","tests":"compiler/[a-h]*","slug":"hs-compiler1"},{"name":"hotspot/tier1 compiler i","dir":"hotspot","tests":"compiler/i*","slug":"hs-compiler4"},{"name":"hotspot/tier1 compiler j-z","dir":"hotspot","tests":"compiler/[j-z]* compiler/[A-Z]*","slug":"hs-compiler2"},{"name":"hotspot/tier1 compiler bugs","dir":"hotspot","tests":"compiler/[0-9]*","slug":"hs-compiler3"},{"name":"hotspot/tier1 gc","dir":"hotspot","tests":"gc","slug":"hs-gc"},{"name":"hotspot/tier1 runtime","dir":"hotspot","tests":"runtime","slug":"hs-runtime"}]') }}
 
     steps:
       # The tests are compiled where they run, so the guest needs their
