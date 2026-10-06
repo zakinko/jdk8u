@@ -153,7 +153,10 @@ public class CloseRace {
     static class ExecLoop implements Runnable {
         public void run() {
             threadsStarted.countDown();
-            ProcessBuilder builder = new ProcessBuilder("/bin/true");
+            // true(1) is in /usr/bin rather than /bin on NetBSD.
+            String trueCmd = new File("/bin/true").exists()
+                ? "/bin/true" : "/usr/bin/true";
+            ProcessBuilder builder = new ProcessBuilder(trueCmd);
             while (!Thread.interrupted()) {
                 try {
                     // wait for OpenLoop to finish
