@@ -80,6 +80,17 @@ int os::get_native_stack(address* stack, int frames, int toSkip) {
 
   int frame_idx = 0;
   int num_of_frames;  // number of frames captured
+#if defined(_ALLBSD_SOURCE) && !defined(__APPLE__)
+  // The walk follows saved frame pointers, and is_first_C_frame() only
+  // guesses at whether the next one is real.  NetBSD builds its libc and
+  // libpthread with GCC, which on aarch64 keeps no frame record, so the
+  // walk can step past the thread's start onto a value that passes the
+  // guess and points past the end of the stack.  Native memory tracking
+  // walks every malloc's stack, before the VM has a signal handler to
+  // catch that fault.  Stop at the first frame outside this stack.
+  address stack_lo = os::current_stack_pointer();
+  address stack_hi = os::current_stack_base() - 2 * sizeof(address);
+#endif
   frame fr = os::current_frame();
   while (fr.pc() && frame_idx < frames) {
     if (toSkip > 0) {
@@ -87,6 +98,9 @@ int os::get_native_stack(address* stack, int frames, int toSkip) {
     } else {
       stack[frame_idx ++] = fr.pc();
     }
+#if defined(_ALLBSD_SOURCE) && !defined(__APPLE__)
+    if ((address)fr.fp() < stack_lo || (address)fr.fp() > stack_hi) break;
+#endif
     if (fr.fp() == NULL || os::is_first_C_frame(&fr)
         ||fr.sender_pc() == NULL || fr.cb() != NULL) break;
 
