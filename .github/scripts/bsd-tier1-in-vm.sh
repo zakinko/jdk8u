@@ -230,4 +230,39 @@ find build/work -name 'hs_err_pid*.log' 2>/dev/null | head -4 |
     awk '/^Native frames/ { n = 1 } NR <= 25 || n { print } n && /^$/ { n = 0 }' \
       "$f" | head -70
   done
+
+# A VM that dies before it has a signal handler leaves no hs_err file, and
+# detailed native memory tracking has done so on NetBSD aarch64, exit 139
+# and not a word.  When the plainest such run fails, run it again under
+# gdb and stop at the fault: the stack and registers are all there is.
+if [ "$repo" = hotspot ] &&
+   ! "$JDK/bin/java" -XX:NativeMemoryTracking=detail -version >/dev/null 2>&1; then
+  echo "--- java -XX:NativeMemoryTracking=detail -version fails ---"
+  if command -v gdb >/dev/null 2>&1; then
+    limit=
+    if command -v timeout >/dev/null 2>&1; then
+      limit="timeout 600"
+    fi
+    # Stop at each SIGSEGV and SIGBUS, up to three, since the VM may take
+    # one on purpose before the one that kills it.
+    cat > build/nmt.gdb <<'GDB'
+handle SIGSEGV stop print pass
+handle SIGBUS stop print pass
+run
+bt 30
+info registers
+x/6i $pc
+continue
+bt 30
+continue
+bt 30
+info threads
+GDB
+    $limit gdb -batch -x build/nmt.gdb \
+      --args "$JDK/bin/java" -XX:NativeMemoryTracking=detail -version 2>&1 |
+      tail -200 || :
+    pkill -9 -f "$JDK/bin/java" 2>/dev/null || :
+  fi
+  echo "--- end ---"
+fi
 exit 0
