@@ -1541,6 +1541,19 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen) {
 #else
 void * os::dll_load(const char *filename, char *ebuf, int ebuflen)
 {
+#ifdef __DragonFly__
+  // DragonFly's run-time linker reads the ELF header of the file it is
+  // handed without checking that the file is long enough to hold one, and
+  // takes SIGSEGV inside dlopen() on an empty or truncated file instead of
+  // failing.  Nothing that short is a library: refuse it here, as dlopen()
+  // would anywhere else.
+  struct stat st;
+  if (::stat(filename, &st) == 0 && S_ISREG(st.st_mode) &&
+      st.st_size < (off_t)sizeof(Elf32_Ehdr)) {
+    jio_snprintf(ebuf, ebuflen, "%s: file too short", filename);
+    return NULL;
+  }
+#endif
   void * result= ::dlopen(filename, RTLD_LAZY);
   if (result != NULL) {
     // Successful loading
