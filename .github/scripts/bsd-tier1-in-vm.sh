@@ -73,7 +73,15 @@ fi
 # JDI tests have the debuggee listen on the machine's own name
 # (address=freebsd:20995 and the like), and the images vmactions boots do
 # not all resolve it; the debuggee then fails in VM initialisation.
+# The DragonFly image boots with no name at all, and getLocalHost() then
+# looks up the empty string and fails, in JDI's attaching connectors and
+# the ORB alike; give such a machine one.
 h=`hostname`
+if [ -z "$h" ]; then
+  h=`uname -s | tr '[:upper:]' '[:lower:]'`
+  hostname "$h" || :
+  echo "hostname was unset; now $h"
+fi
 if [ -n "$h" ] && ! grep -Eq "[[:space:]]$h([[:space:]]|\$)" /etc/hosts; then
   echo "127.0.0.1 $h" >> /etc/hosts
 fi
