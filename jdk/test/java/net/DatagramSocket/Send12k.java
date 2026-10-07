@@ -39,7 +39,7 @@ public class Send12k {
          String osName = System.getProperty("os.name");
          int SEND_SIZE;
 
-         if(osName.endsWith("BSD") || osName.contains("Mac")) {
+         if(osName.endsWith("BSD") || osName.equals("DragonFly") || osName.contains("Mac")) {
              SEND_SIZE = 16 * 576;
          } else {
              SEND_SIZE = 16 * 1024;

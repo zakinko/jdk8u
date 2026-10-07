@@ -95,7 +95,8 @@ public class TestHelper {
     static final boolean isAIX =
             System.getProperty("os.name", "unknown").startsWith("AIX");
     static final boolean isBSD =
-            System.getProperty("os.name", "unknown").endsWith("BSD");
+            System.getProperty("os.name", "unknown").endsWith("BSD") ||
+            System.getProperty("os.name", "unknown").equals("DragonFly");
     static final String LIBJVM = isWindows
                         ? "jvm.dll"
                         : "libjvm" + (isMacOSX ? ".dylib" : ".so");

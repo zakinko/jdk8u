@@ -82,7 +82,7 @@ public class GetSystemLoadAverage {
     private static String osName = System.getProperty("os.name");
 
     private static String LOAD_AVERAGE_TEXT
-            = (osName.endsWith("BSD") || osName.contains("OS X"))
+            = (osName.endsWith("BSD") || osName.equals("DragonFly") || osName.contains("OS X"))
                 ? "load averages:"
                 : "load average:";
 
@@ -101,7 +101,7 @@ public class GetSystemLoadAverage {
         System.out.println("Load average returned from uptime = " + output);
         System.out.println("getSystemLoadAverage() returned " + loadavg);
 
-        String[] lavg = (osName.endsWith("BSD") || osName.contains("OS X"))
+        String[] lavg = (osName.endsWith("BSD") || osName.equals("DragonFly") || osName.contains("OS X"))
                 ? output.split(" ")
                 : output.split(",");
         double expected = Double.parseDouble(lavg[0]);
