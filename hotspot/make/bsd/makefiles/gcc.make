@@ -261,6 +261,12 @@ ifeq ($(OS_VENDOR), Darwin)
 endif
 
 CFLAGS     += $(ARCHFLAG)
+
+# Stack walking in the JVM -- native memory tracking's call sites, the
+# native frames of an hs_err file -- follows the frame pointer, on every
+# CPU.  Clang omits it by default when optimising for NetBSD whatever the
+# CPU, and on some CPUs elsewhere; ask for it, as the Linux build does.
+CFLAGS     += -fno-omit-frame-pointer
 AOUT_FLAGS += $(ARCHFLAG)
 LFLAGS     += $(ARCHFLAG)
 ASFLAGS    += $(ARCHFLAG)
