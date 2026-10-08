@@ -239,6 +239,26 @@ find build/work -name 'hs_err_pid*.log' 2>/dev/null | head -4 |
       "$f" | head -70
   done
 
+# langtools' T6394683 has failed on DragonFly twice with "Cannot create
+# files": a file rewritten once a second for four seconds never came to
+# look newer than one written before it.  Show what the file system says.
+if [ "$os" = DragonFly ] && [ "$repo" = langtools ]; then
+  echo "--- modification times here ---"
+  mount | grep -E " / | /home" || mount | head -5
+  d=build/mtime
+  rm -rf $d && mkdir -p $d
+  echo older > $d/older
+  for i in 1 2 3; do
+    sleep 1
+    echo newer > $d/newer
+    stat -f '%N mtime=%m (%Sm) size=%z' $d/older $d/newer || :
+  done
+  if [ -x "$JDK/bin/jjs" ]; then
+    "$JDK/bin/jjs" -e "print('java: older=' + new java.io.File('$d/older').lastModified() + ' newer=' + new java.io.File('$d/newer').lastModified())" 2>&1 || :
+  fi
+  echo "--- end ---"
+fi
+
 # A VM that dies before it has a signal handler leaves no hs_err file, and
 # detailed native memory tracking has done so on NetBSD aarch64, exit 139
 # and not a word.  When the plainest such run fails, run it again under
