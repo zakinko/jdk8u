@@ -193,6 +193,9 @@ fi
 if [ "$repo" = jdk ]; then
   extra="$extra -exclude:$PWD/.github/scripts/bsd-headless-problems.txt"
 fi
+if [ "$repo" = langtools ] && [ "$os" = DragonFly ]; then
+  extra="$extra -exclude:$PWD/.github/scripts/bsd-dragonfly-langtools-problems.txt"
+fi
 
 # The parts may name tests by a pattern, compiler/[a-i]* and the like;
 # expand it in the test root, the directory jtreg reads relative names
@@ -239,9 +242,10 @@ find build/work -name 'hs_err_pid*.log' 2>/dev/null | head -4 |
       "$f" | head -70
   done
 
-# langtools' T6394683 has failed on DragonFly twice with "Cannot create
-# files": a file rewritten once a second for four seconds never came to
-# look newer than one written before it.  Show what the file system says.
+# langtools' T6394683 fails on DragonFly with "Cannot create files" (it is
+# in bsd-dragonfly-langtools-problems.txt now): show what the file system
+# does to the modification time of a file rewritten with data and of an
+# empty one truncated again.
 if [ "$os" = DragonFly ] && [ "$repo" = langtools ]; then
   echo "--- modification times here ---"
   mount | grep -E " / | /home" || mount | head -5
@@ -253,9 +257,13 @@ if [ "$os" = DragonFly ] && [ "$repo" = langtools ]; then
     echo newer > $d/newer
     stat -f '%N mtime=%m (%Sm) size=%z' $d/older $d/newer || :
   done
-  if [ -x "$JDK/bin/jjs" ]; then
-    "$JDK/bin/jjs" -e "print('java: older=' + new java.io.File('$d/older').lastModified() + ' newer=' + new java.io.File('$d/newer').lastModified())" 2>&1 || :
-  fi
+  # And as T6394683 makes its newer file: an empty one, truncated again.
+  : > $d/empty
+  for i in 1 2; do
+    sleep 1
+    : > $d/empty
+    stat -f '%N mtime=%m (%Sm) size=%z' $d/empty || :
+  done
   echo "--- end ---"
 fi
 

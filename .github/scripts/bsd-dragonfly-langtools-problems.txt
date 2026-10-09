@@ -1,0 +1,15 @@
+# langtools tests that cannot pass on DragonFly's HAMMER2 file system.
+#
+# bsd-tier1-in-vm.sh passes this list to jtreg for the langtools part on
+# DragonFly, in the format of the repositories' own ProblemLists.
+#
+# T6394683 makes its newer file by opening an existing, empty B.class for
+# writing (FileOutputStream, O_TRUNC) and closing it without a byte, once
+# a second, until File.lastModified() says it is newer than B.java.  POSIX
+# has open(O_TRUNC) of an existing file mark the modification time for
+# update; HAMMER2 appears to leave the time alone when the file is empty
+# already (the probe after the part checks), so the test gives up with
+# "Cannot create files" after four seconds.  A file rewritten with data
+# does move on, a second at a time (run #29).
+
+tools/javac/6394683/T6394683.java	6394683	generic-all	HAMMER2 does not touch mtime on O_TRUNC of an empty file
