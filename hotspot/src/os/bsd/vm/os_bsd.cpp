@@ -2414,8 +2414,13 @@ bool os::pd_commit_memory(char* addr, size_t size, bool exec) {
 #endif
 
   // Warn about any commit errors we see in non-product builds just
-  // in case mmap() doesn't work as described on the man page.
-  NOT_PRODUCT(warn_fail_commit_memory(addr, size, exec, errno);)
+  // in case mmap() doesn't work as described on the man page.  On
+  // DragonFly, product builds too: a commit there has now and then
+  // failed at VM start-up for a few hundred kilobytes of a 2GB heap,
+  // and the error is all there is to say why.
+#if !defined(PRODUCT) || defined(__DragonFly__)
+  warn_fail_commit_memory(addr, size, exec, errno);
+#endif
 
   return false;
 }
