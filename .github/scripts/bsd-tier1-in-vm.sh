@@ -242,29 +242,4 @@ find build/work -name 'hs_err_pid*.log' 2>/dev/null | head -4 |
       "$f" | head -70
   done
 
-# langtools' T6394683 fails on DragonFly with "Cannot create files" (it is
-# in bsd-dragonfly-langtools-problems.txt now): show what the file system
-# does to the modification time of a file rewritten with data and of an
-# empty one truncated again.
-if [ "$os" = DragonFly ] && [ "$repo" = langtools ]; then
-  echo "--- modification times here ---"
-  mount | grep -E " / | /home" || mount | head -5
-  d=build/mtime
-  rm -rf $d && mkdir -p $d
-  echo older > $d/older
-  for i in 1 2 3; do
-    sleep 1
-    echo newer > $d/newer
-    stat -f '%N mtime=%m (%Sm) size=%z' $d/older $d/newer || :
-  done
-  # And as T6394683 makes its newer file: an empty one, truncated again.
-  : > $d/empty
-  for i in 1 2; do
-    sleep 1
-    : > $d/empty
-    stat -f '%N mtime=%m (%Sm) size=%z' $d/empty || :
-  done
-  echo "--- end ---"
-fi
-
 exit 0

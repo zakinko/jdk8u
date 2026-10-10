@@ -7,9 +7,9 @@
 # writing (FileOutputStream, O_TRUNC) and closing it without a byte, once
 # a second, until File.lastModified() says it is newer than B.java.  POSIX
 # has open(O_TRUNC) of an existing file mark the modification time for
-# update; HAMMER2 appears to leave the time alone when the file is empty
-# already (the probe after the part checks), so the test gives up with
-# "Cannot create files" after four seconds.  A file rewritten with data
-# does move on, a second at a time (run #29).
+# update; HAMMER2 leaves it alone when the file is empty already, so the
+# test gives up with "Cannot create files" after four seconds.  Measured
+# in run #31: a file rewritten with data moved on a second at a time, an
+# empty one truncated again a second later kept its time.
 
-tools/javac/6394683/T6394683.java	6394683	generic-all	HAMMER2 does not touch mtime on O_TRUNC of an empty file
+tools/javac/6394683/T6394683.java	6394683	generic-all	HAMMER2 keeps mtime on O_TRUNC of an empty file
