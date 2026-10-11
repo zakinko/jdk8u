@@ -202,6 +202,34 @@ fi
 # against.
 tests=`cd "$PWD/$repo/test" && for t in "$@"; do echo $t; done`
 
+# JDI tests on NetBSD and OpenBSD have now and then hung, the debugger
+# waiting on a debuggee that never completes the JDWP handshake; jtreg's
+# timeout handler dumps only the debugger.  While the jdk tests run, give
+# any VM started with -agentlib:jdwp that has lived five minutes one
+# jstack, and print what it said after jtreg.  It only looks.
+watcher=
+if [ "$repo" = jdk ]; then
+  mkdir -p build/stuck
+  (
+    while sleep 60; do
+      for pid in `pgrep -f 'agentlib:jdwp' 2>/dev/null`; do
+        [ -f build/stuck/$pid ] && continue
+        secs=`ps -o etime= -p $pid 2>/dev/null |
+          awk -F'[-:]' '{ s = 0; for (i = 1; i <= NF; i++) s = s * 60 + $i;
+                          if (NF == 4) s = $1 * 86400 + $2 * 3600 + $3 * 60 + $4;
+                          print s }'`
+        [ -n "$secs" ] && [ "$secs" -ge 300 ] || continue
+        {
+          echo "pid $pid, up ${secs}s:"
+          ps -o args= -p $pid || :
+          "$JDK/bin/jstack" $pid 2>&1 || :
+        } > build/stuck/$pid 2>&1
+      done
+    done
+  ) &
+  watcher=$!
+fi
+
 set +e
 JT_JAVA="$JDK/bin/java" "$JT/bin/jtreg" \
   -jdk:"$JDK" \
@@ -215,6 +243,14 @@ JT_JAVA="$JDK/bin/java" "$JT/bin/jtreg" \
   $tests
 echo $? > build/jtreg-exit
 set -e
+if [ -n "$watcher" ]; then
+  kill $watcher 2>/dev/null || :
+  for f in build/stuck/*; do
+    [ -f "$f" ] || continue
+    echo "--- a JDWP debuggee that outlived five minutes: $f ---"
+    head -120 "$f"
+  done
+fi
 
 echo "--- jtreg exited `cat build/jtreg-exit` ---"
 cat build/report/text/summary.txt 2>/dev/null | grep -v 'Passed\.' || :
