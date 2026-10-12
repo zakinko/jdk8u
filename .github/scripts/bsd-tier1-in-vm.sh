@@ -205,14 +205,15 @@ tests=`cd "$PWD/$repo/test" && for t in "$@"; do echo $t; done`
 # JDI tests on NetBSD and OpenBSD have now and then hung, the debugger
 # waiting on a debuggee that never completes the JDWP handshake; jtreg's
 # timeout handler dumps only the debugger.  While the jdk tests run, give
-# any VM started with -agentlib:jdwp that has lived five minutes one
+# any VM started with jdwp (-Xrunjdwp, which the JDI launcher uses, or
+# -agentlib:jdwp, which the shell tests use) that has lived five minutes one
 # jstack, and print what it said after jtreg.  It only looks.
 watcher=
 if [ "$repo" = jdk ]; then
   mkdir -p build/stuck
   (
     while sleep 60; do
-      for pid in `pgrep -f 'agentlib:jdwp' 2>/dev/null`; do
+      for pid in `pgrep -f 'jdwp' 2>/dev/null`; do
         [ -f build/stuck/$pid ] && continue
         secs=`ps -o etime= -p $pid 2>/dev/null |
           awk -F'[-:]' '{ s = 0; for (i = 1; i <= NF; i++) s = s * 60 + $i;
