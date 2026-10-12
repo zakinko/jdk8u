@@ -22,7 +22,7 @@
  */
 
 /* @test
- * @bug 6306165 6432567
+ * @bug 6306165 6432567 8192057
  * @summary Check that a bad handshake doesn't cause a debuggee to abort
  * @library /lib/testlibrary
  *
@@ -31,6 +31,7 @@
  *
  */
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.InetAddress;
 import com.sun.jdi.Bootstrap;
 import com.sun.jdi.VirtualMachine;
@@ -115,7 +116,21 @@ public class BadHandshakeTest {
         s.close();
 
         // Re-connect and to a partial handshake - don't disconnect
-        s = new Socket(InetAddress.getLocalHost(), port);
+        // Re-connecting just after the disconnect may be refused while the
+        // debuggee is still closing the last connection (see JDK-8192057);
+        // the BSDs report that as a reset rather than a refusal.
+        s = null;
+        for (int retry = 0; s == null; retry++) {
+            try {
+                s = new Socket(InetAddress.getLocalHost(), port);
+            } catch (SocketException ex) {
+                if (retry == 4) {
+                    throw ex;
+                }
+                System.out.println("got exception: " + ex + "; retrying");
+                Thread.sleep(20 << retry);
+            }
+        }
         s.getOutputStream().write("JDWP-".getBytes("UTF-8"));
 
 
@@ -125,7 +140,18 @@ public class BadHandshakeTest {
         Connector.IntegerArgument port_arg =
             (Connector.IntegerArgument)conn_args.get("port");
         port_arg.setValue(port);
-        VirtualMachine vm = conn.attach(conn_args);
+        VirtualMachine vm = null;
+        for (int retry = 0; vm == null; retry++) {
+            try {
+                vm = conn.attach(conn_args);
+            } catch (SocketException ex) {
+                if (retry == 4) {
+                    throw ex;
+                }
+                System.out.println("got exception: " + ex + "; retrying");
+                Thread.sleep(20 << retry);
+            }
+        }
 
         // The first event is always a VMStartEvent, and it is always in
         // an EventSet by itself.  Wait for it.
