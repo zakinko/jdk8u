@@ -224,6 +224,12 @@ if [ "$repo" = jdk ]; then
           echo "pid $pid, up ${secs}s:"
           ps -o args= -p $pid || :
           "$JDK/bin/jstack" $pid 2>&1 || :
+          # Its sockets, and those of the machine: whether it is
+          # connected to the debugger at all.
+          echo "its sockets:"
+          fstat -p $pid 2>&1 | grep -Ei 'tcp|internet' || :
+          echo "tcp connections:"
+          netstat -an -p tcp 2>&1 | grep -v LISTEN | head -40 || :
         } > build/stuck/$pid 2>&1
       done
     done
@@ -249,7 +255,7 @@ if [ -n "$watcher" ]; then
   for f in build/stuck/*; do
     [ -f "$f" ] || continue
     echo "--- a JDWP debuggee that outlived five minutes: $f ---"
-    head -120 "$f"
+    head -200 "$f"
   done
 fi
 
