@@ -226,6 +226,14 @@ if [ "$repo" = jdk ]; then
           "$JDK/bin/jstack" $pid 2>&1 || :
           # Its sockets, and those of the machine: whether it is
           # connected to the debugger at all.
+          # What each of its threads sleeps on in the kernel: a thread
+          # in native code has no Java frames to show.
+          echo "its threads' wait channels:"
+          case "$os" in
+            NetBSD) ps -s -o lid,stat,wchan -p $pid 2>&1 || : ;;
+            FreeBSD|DragonFly) ps -H -o lwp,stat,wchan -p $pid 2>&1 || : ;;
+            *) ps -H -o tid,stat,wchan -p $pid 2>&1 || : ;;
+          esac
           echo "its sockets:"
           fstat -p $pid 2>&1 | grep -Ei 'tcp|internet' || :
           echo "tcp connections:"
