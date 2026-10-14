@@ -48,9 +48,74 @@ dbgsysListen(int fd, int backlog) {
     return listen(fd, backlog);
 }
 
+#if defined(_ALLBSD_SOURCE) && !defined(__APPLE__)
+/*
+ * A blocking connect, done as a non-blocking one that is polled a second
+ * at a time.  OpenBSD has left a debuggee asleep in connect(2) (wait
+ * channel "netcon") for good on a loopback connection that both ends had
+ * long since seen established; a thread that looks again every second
+ * does not depend on the wakeup it missed.
+ */
+static int
+connectPolled(int fd, struct sockaddr *name, socklen_t namelen, int flags) {
+    int rv, saved;
+
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+        return connect(fd, name, namelen);
+    }
+    rv = connect(fd, name, namelen);
+    if (rv < 0 && (errno == EINPROGRESS || errno == EINTR)) {
+        for (;;) {
+            struct pollfd pfd;
+            struct sockaddr_storage peer;
+            socklen_t len;
+            int err = 0;
+
+            pfd.fd = fd;
+            pfd.events = POLLOUT;
+            pfd.revents = 0;
+            if (poll(&pfd, 1, 1000) < 0 && errno != EINTR) {
+                rv = -1;
+                break;
+            }
+            len = sizeof(err);
+            if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len) < 0) {
+                rv = -1;
+                break;
+            }
+            if (err != 0) {
+                errno = err;
+                rv = -1;
+                break;
+            }
+            len = sizeof(peer);
+            if (getpeername(fd, (struct sockaddr *)&peer, &len) == 0) {
+                rv = 0;
+                break;
+            }
+            if (errno != ENOTCONN) {
+                rv = -1;
+                break;
+            }
+        }
+    }
+    saved = errno;
+    fcntl(fd, F_SETFL, flags);
+    errno = saved;
+    return rv;
+}
+#endif
+
 int
 dbgsysConnect(int fd, struct sockaddr *name, socklen_t namelen) {
-    int rv = connect(fd, name, namelen);
+    int rv;
+#if defined(_ALLBSD_SOURCE) && !defined(__APPLE__)
+    int flags = fcntl(fd, F_GETFL);
+    if (flags != -1 && !(flags & O_NONBLOCK)) {
+        return connectPolled(fd, name, namelen, flags);
+    }
+#endif
+    rv = connect(fd, name, namelen);
     if (rv < 0 && (errno == EINPROGRESS || errno == EINTR)) {
         return DBG_EINPROGRESS;
     } else {
