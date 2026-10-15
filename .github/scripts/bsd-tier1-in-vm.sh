@@ -207,38 +207,57 @@ tests=`cd "$PWD/$repo/test" && for t in "$@"; do echo $t; done`
 # timeout handler dumps only the debugger.  While the jdk tests run, give
 # any VM started with jdwp (-Xrunjdwp, which the JDI launcher uses, or
 # -agentlib:jdwp, which the shell tests use) that has lived five minutes one
-# jstack, and print what it said after jtreg.  It only looks.
+# report, and print what it said after jtreg.  OpenBSD has also left a
+# thread asleep in connect(2) on a connection already established, which
+# can stall any VM, jtreg's agents among them; report too on any java with
+# a thread that sleeps there two samples, a minute, running.  It only looks.
 watcher=
 if [ "$repo" = jdk ]; then
-  mkdir -p build/stuck
+  mkdir -p build/stuck build/seen
+  threads() {
+    case "$os" in
+      NetBSD) ps -s -o lid,stat,wchan -p $1 2>&1 || : ;;
+      FreeBSD|DragonFly) ps -H -o lwp,stat,wchan -p $1 2>&1 || : ;;
+      *) ps -H -o tid,stat,wchan -p $1 2>&1 || : ;;
+    esac
+  }
+  report() {
+    {
+      echo "pid $1, up ${2}s:"
+      ps -o args= -p $1 || :
+      "$JDK/bin/jstack" $1 2>&1 || :
+      # What each of its threads sleeps on in the kernel: a thread in
+      # native code has no Java frames to show.
+      echo "its threads' wait channels:"
+      threads $1
+      # Its sockets, and those of the machine: whether it is connected
+      # to its peer at all.
+      echo "its sockets:"
+      fstat -p $1 2>&1 | grep -Ei 'tcp|internet' || :
+      echo "tcp connections:"
+      netstat -an -p tcp 2>&1 | grep -v LISTEN | head -40 || :
+    } > "$3" 2>&1
+  }
   (
     while sleep 60; do
-      for pid in `pgrep -f 'jdwp' 2>/dev/null`; do
-        [ -f build/stuck/$pid ] && continue
+      for pid in `pgrep java 2>/dev/null`; do
         secs=`ps -o etime= -p $pid 2>/dev/null |
           awk -F'[-:]' '{ s = 0; for (i = 1; i <= NF; i++) s = s * 60 + $i;
                           if (NF == 4) s = $1 * 86400 + $2 * 3600 + $3 * 60 + $4;
                           print s }'`
-        [ -n "$secs" ] && [ "$secs" -ge 300 ] || continue
-        {
-          echo "pid $pid, up ${secs}s:"
-          ps -o args= -p $pid || :
-          "$JDK/bin/jstack" $pid 2>&1 || :
-          # Its sockets, and those of the machine: whether it is
-          # connected to the debugger at all.
-          # What each of its threads sleeps on in the kernel: a thread
-          # in native code has no Java frames to show.
-          echo "its threads' wait channels:"
-          case "$os" in
-            NetBSD) ps -s -o lid,stat,wchan -p $pid 2>&1 || : ;;
-            FreeBSD|DragonFly) ps -H -o lwp,stat,wchan -p $pid 2>&1 || : ;;
-            *) ps -H -o tid,stat,wchan -p $pid 2>&1 || : ;;
-          esac
-          echo "its sockets:"
-          fstat -p $pid 2>&1 | grep -Ei 'tcp|internet' || :
-          echo "tcp connections:"
-          netstat -an -p tcp 2>&1 | grep -v LISTEN | head -40 || :
-        } > build/stuck/$pid 2>&1
+        [ -n "$secs" ] || continue
+        if ps -o args= -p $pid 2>/dev/null | grep -q jdwp &&
+           [ "$secs" -ge 300 ] && [ ! -f build/stuck/$pid ]; then
+          report $pid $secs build/stuck/$pid
+        fi
+        if threads $pid | grep -Eq 'netcon|connec'; then
+          if [ -f build/seen/$pid ] && [ ! -f build/stuck/connect.$pid ]; then
+            report $pid $secs build/stuck/connect.$pid
+          fi
+          touch build/seen/$pid
+        else
+          rm -f build/seen/$pid
+        fi
       done
     done
   ) &
@@ -262,7 +281,10 @@ if [ -n "$watcher" ]; then
   kill $watcher 2>/dev/null || :
   for f in build/stuck/*; do
     [ -f "$f" ] || continue
-    echo "--- a JDWP debuggee that outlived five minutes: $f ---"
+    case "$f" in
+      */connect.*) echo "--- a VM with a thread a minute in connect(2): $f ---" ;;
+      *) echo "--- a JDWP debuggee that outlived five minutes: $f ---" ;;
+    esac
     head -200 "$f"
   done
 fi
