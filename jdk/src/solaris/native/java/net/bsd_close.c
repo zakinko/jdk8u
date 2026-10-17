@@ -38,6 +38,7 @@
 #include <sys/uio.h>
 #include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/poll.h>
 #include "jvm.h"
 
@@ -405,7 +406,85 @@ int NET_Accept(int s, struct sockaddr *addr, int *addrlen) {
     *addrlen = socklen;
 }
 
+#ifndef __APPLE__
+/*
+ * A blocking connect, done as a non-blocking one that is polled a second
+ * at a time.  OpenBSD has left a thread asleep in connect(2) (wait channel
+ * "netcon") for good on a loopback connection that both ends had long
+ * since seen established; a thread that looks again every second does not
+ * depend on the wakeup it missed.  The poll is a blocking operation on the
+ * fd like any other, so that a close from another thread still ends it.
+ */
+static int connectPolled(int s, struct sockaddr *addr, int addrlen,
+                         int flags) {
+    threadEntry_t self;
+    fdEntry_t *fdEntry = getFdEntry(s);
+    int ret, saved;
+
+    if (fdEntry == NULL) {
+        errno = EBADF;
+        return -1;
+    }
+    if (fcntl(s, F_SETFL, flags | O_NONBLOCK) < 0) {
+        BLOCKING_IO_RETURN_INT( s, connect(s, addr, addrlen), JNI_TRUE );
+    }
+    ret = connect(s, addr, addrlen);
+    if (ret < 0 && (errno == EINPROGRESS || errno == EINTR)) {
+        for (;;) {
+            struct pollfd pfd;
+            struct sockaddr_storage peer;
+            socklen_t len;
+            int err = 0;
+
+            pfd.fd = s;
+            pfd.events = POLLOUT;
+            pfd.revents = 0;
+            startOp(fdEntry, &self);
+            ret = poll(&pfd, 1, 1000);
+            endOp(fdEntry, &self);
+            if (self.intr) {
+                errno = EBADF;
+                ret = -1;
+                break;
+            }
+            if (ret < 0 && errno != EINTR) {
+                break;
+            }
+            len = sizeof(err);
+            if (getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &len) < 0) {
+                ret = -1;
+                break;
+            }
+            if (err != 0) {
+                errno = err;
+                ret = -1;
+                break;
+            }
+            len = sizeof(peer);
+            if (getpeername(s, (struct sockaddr *)&peer, &len) == 0) {
+                ret = 0;
+                break;
+            }
+            if (errno != ENOTCONN) {
+                ret = -1;
+                break;
+            }
+        }
+    }
+    saved = errno;
+    fcntl(s, F_SETFL, flags);
+    errno = saved;
+    return ret;
+}
+#endif
+
 int NET_Connect(int s, struct sockaddr *addr, int addrlen) {
+#ifndef __APPLE__
+    int flags = fcntl(s, F_GETFL);
+    if (flags != -1 && !(flags & O_NONBLOCK)) {
+        return connectPolled(s, addr, addrlen, flags);
+    }
+#endif
     BLOCKING_IO_RETURN_INT( s, connect(s, addr, addrlen), JNI_TRUE );
 }
 
